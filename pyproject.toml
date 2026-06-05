@@ -1,0 +1,7 @@
+[tool.pyrefly]
+# Point Pyrefly at the correct Python interpreter so it can find
+# site-packages (PyQt5, wmi, GPUtil, psutil, etc.)
+python_interpreter = "C:/Python314/python.exe"
+
+# Suppress third-party stubs warnings for packages without type stubs
+ignore_missing_imports = true

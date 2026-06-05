@@ -4,17 +4,24 @@ Flat inline-styled advanced view. Neon teal/magenta, 150% fonts.
 """
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QSizePolicy
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QFrame,
+    QSizePolicy,
 )
 from PyQt5.QtCore import Qt
 from graph_widget import SpeedGraph
-from simple_view import fmt_speed_str, fmt_bytes, DL, UL, DIM, DIMMER, BRIGHT
+from simple_view import fmt_speed_str, DL, UL, DIM, BRIGHT
 
 
 def _divider():
     f = QFrame()
     f.setFrameShape(QFrame.HLine)
-    f.setStyleSheet("border-top: 1px solid rgba(57, 255, 20, 0.40); max-height:1px; background:transparent;")
+    f.setStyleSheet(
+        "border-top: 1px solid rgba(57, 255, 20, 0.40); max-height:1px; background:transparent;"
+    )
     return f
 
 
@@ -96,14 +103,20 @@ class AdvancedView(QWidget):
 
         # Network
         root.addWidget(_sec("NETWORK"))
-        self._r_iface = _Row("Interface",          BRIGHT)
-        self._r_pr    = _Row("Packets recv",       DIM)
-        self._r_ps    = _Row("Packets sent",       DIM)
-        self._r_err   = _Row("Errors  in / out",  "rgba(251,191,36,0.80)")
-        self._r_drop  = _Row("Drops   in / out",  "rgba(251,191,36,0.80)")
-        self._r_eta   = _Row("ETA to 1 GB ↓",     DIM)
-        for w in (self._r_iface, self._r_pr, self._r_ps,
-                  self._r_err, self._r_drop, self._r_eta):
+        self._r_iface = _Row("Interface", BRIGHT)
+        self._r_pr = _Row("Packets recv", DIM)
+        self._r_ps = _Row("Packets sent", DIM)
+        self._r_err = _Row("Errors  in / out", "rgba(251,191,36,0.80)")
+        self._r_drop = _Row("Drops   in / out", "rgba(251,191,36,0.80)")
+        self._r_eta = _Row("ETA to 1 GB ↓", DIM)
+        for w in (
+            self._r_iface,
+            self._r_pr,
+            self._r_ps,
+            self._r_err,
+            self._r_drop,
+            self._r_eta,
+        ):
             root.addWidget(w)
 
         root.addStretch()
@@ -112,14 +125,16 @@ class AdvancedView(QWidget):
         dl, ul = s["download_speed"], s["upload_speed"]
         self._peak_dl = max(self._peak_dl, dl)
         self._peak_ul = max(self._peak_ul, ul)
-        self._count  += 1
+        self._count += 1
         self._sum_dl += dl
         self._sum_ul += ul
 
         eta = "∞"
         if dl > 0:
             t = 1_073_741_824 / dl
-            eta = f"{int(t//60)}m {int(t%60)}s" if t < 3600 else f"{t/3600:.1f} hr"
+            eta = (
+                f"{int(t // 60)}m {int(t % 60)}s" if t < 3600 else f"{t / 3600:.1f} hr"
+            )
 
         self._graph.update_data(s["dl_history"], s["ul_history"])
         self._r_dl.set(fmt_speed_str(dl))
@@ -150,4 +165,3 @@ class AdvancedView(QWidget):
         self._r_err.set("0  /  0")
         self._r_drop.set("0  /  0")
         self._r_eta.set("—")
-

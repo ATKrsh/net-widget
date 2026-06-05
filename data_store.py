@@ -4,7 +4,6 @@ Persists cumulative (all-sessions) network data to disk.
 """
 
 import json
-import os
 import time
 from pathlib import Path
 import psutil
@@ -64,6 +63,7 @@ def save(data: dict):
 
 class DataStore:
     """High-level interface for session + all-time data."""
+
     def __init__(self):
         self._data = load()
         self._data["session_count"] += 1
@@ -113,13 +113,19 @@ class DataStore:
     def this_session_baseline_sent(self) -> int:
         return self._data["this_session_baseline_sent"]
 
-    def update_all_sessions(self, this_session_recv: int, this_session_sent: int, interface: str):
+    def update_all_sessions(
+        self, this_session_recv: int, this_session_sent: int, interface: str
+    ):
         """Update all-sessions data by checking for reboot/wraparound and computing differences."""
         import psutil
+
         boot = psutil.boot_time()
-        
+
         # If we booted after the last save, or interface changed, reset baseline
-        if abs(self._data["last_boot_time"] - boot) > 5.0 or self._data["last_interface"] != interface:
+        if (
+            abs(self._data["last_boot_time"] - boot) > 5.0
+            or self._data["last_interface"] != interface
+        ):
             self._data["last_boot_time"] = boot
             self._data["last_interface"] = interface
             self._data["last_boot_session_recv"] = this_session_recv
@@ -134,13 +140,17 @@ class DataStore:
 
         if delta_recv >= 0 and delta_sent >= 0:
             if this_session_recv >= self._data["last_boot_session_recv"]:
-                self._data["all_sessions_recv"] += this_session_recv - self._data["last_boot_session_recv"]
+                self._data["all_sessions_recv"] += (
+                    this_session_recv - self._data["last_boot_session_recv"]
+                )
                 self._data["last_boot_session_recv"] = this_session_recv
-                
+
                 if this_session_sent >= self._data["last_boot_session_sent"]:
-                    self._data["all_sessions_sent"] += this_session_sent - self._data["last_boot_session_sent"]
+                    self._data["all_sessions_sent"] += (
+                        this_session_sent - self._data["last_boot_session_sent"]
+                    )
                     self._data["last_boot_session_sent"] = this_session_sent
-                    
+
                     # Periodic save (every 5 seconds)
                     now = time.monotonic()
                     if now - self._last_save_time >= 5.0:
@@ -150,11 +160,13 @@ class DataStore:
                 # Counters wrapped or reset, update baseline
                 self._data["last_boot_session_recv"] = this_session_recv
                 self._data["last_boot_session_sent"] = this_session_sent
-                
+
                 save(self._data)
                 self._last_save_time = time.monotonic()
 
-    def reset_all_sessions(self, this_session_recv: int, this_session_sent: int, interface: str):
+    def reset_all_sessions(
+        self, this_session_recv: int, this_session_sent: int, interface: str
+    ):
         """Wipe all-sessions counters and align with current boot session totals."""
         self._data["all_sessions_recv"] = 0
         self._data["all_sessions_sent"] = 0
@@ -162,7 +174,7 @@ class DataStore:
         self._data["last_boot_session_recv"] = this_session_recv
         self._data["last_boot_session_sent"] = this_session_sent
         self._data["last_interface"] = interface
-        
+
         save(self._data)
         self._last_save_time = time.monotonic()
 
@@ -176,4 +188,3 @@ class DataStore:
     def save_to_disk(self):
         save(self._data)
         self._last_save_time = time.monotonic()
-

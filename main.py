@@ -12,7 +12,7 @@ from pathlib import Path
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="wmi")
 
 # Redirect stdout/stderr to a log file in bundled mode to prevent crashes
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     try:
         log_dir = Path.home() / ".net-widget"
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -43,7 +43,8 @@ def main():
     app.setOrganizationName("net-widget")
 
     # Set a modern font
-    from PyQt5.QtGui import QFont, QFontDatabase
+    from PyQt5.QtGui import QFont
+
     font = QFont("Segoe UI", 9)
     font.setHintingPreference(QFont.PreferDefaultHinting)
     app.setFont(font)

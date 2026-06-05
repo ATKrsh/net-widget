@@ -19,7 +19,10 @@ def _get_best_interface():
         if name in if_stats and not if_stats[name].isup:
             continue
         # Skip loopback and virtual adapters
-        if any(skip in name.lower() for skip in ("loopback", "lo", "vmware", "vethernet", "vbox")):
+        if any(
+            skip in name.lower()
+            for skip in ("loopback", "lo", "vmware", "vethernet", "vbox")
+        ):
             continue
         total = stats.bytes_recv + stats.bytes_sent
         if total > best_total:
@@ -39,7 +42,7 @@ class NetworkMonitor(QThread):
         total_recv       – cumulative bytes_recv from psutil (all-time in OS session)
         total_sent       – cumulative bytes_sent from psutil
         packets_recv     – total packets received
- 
+
         packets_sent     – total packets sent
         errin            – input errors
         errout           – output errors
@@ -75,10 +78,13 @@ class NetworkMonitor(QThread):
 
     def set_interface(self, name):
         self._interface = name
+        self.reset_counters()
+
+    def reset_counters(self):
         self._session_baseline = self._read_counters()
         self._prev_counters = self._session_baseline
         self._prev_time = time.monotonic()
-        
+
         self.dl_history.clear()
         self.ul_history.clear()
 
@@ -129,12 +135,16 @@ class NetworkMonitor(QThread):
             "session_sent": session_sent,
             "total_recv": curr.bytes_recv,
             "total_sent": curr.bytes_sent,
-            "packets_recv": curr.packets_recv,
-            "packets_sent": curr.packets_sent,
-            "errin": curr.errin,
-            "errout": curr.errout,
-            "dropin": curr.dropin,
-            "dropout": curr.dropout,
+            "packets_recv": max(
+                0, curr.packets_recv - self._session_baseline.packets_recv
+            ),
+            "packets_sent": max(
+                0, curr.packets_sent - self._session_baseline.packets_sent
+            ),
+            "errin": max(0, curr.errin - self._session_baseline.errin),
+            "errout": max(0, curr.errout - self._session_baseline.errout),
+            "dropin": max(0, curr.dropin - self._session_baseline.dropin),
+            "dropout": max(0, curr.dropout - self._session_baseline.dropout),
             "interface": self.interface_name,
             "dl_history": list(self.dl_history),
             "ul_history": list(self.ul_history),
@@ -144,4 +154,3 @@ class NetworkMonitor(QThread):
     def stop(self):
         self._running = False
         self.wait(2000)
-

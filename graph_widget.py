@@ -5,7 +5,6 @@ Download = electric cyan, Upload = soft violet.
 """
 
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 
 pg.setConfigOptions(antialias=True, background=(0, 0, 0, 0))
@@ -29,7 +28,7 @@ class SpeedGraph(pg.PlotWidget):
         pi.layout.setContentsMargins(2, 4, 8, 2)
 
         # Axes
-        left   = self.getAxis("left")
+        left = self.getAxis("left")
         bottom = self.getAxis("bottom")
         dim_pen = pg.mkPen(color=(255, 255, 255, 18), width=1)
         txt_clr = (255, 255, 255, 50)
@@ -86,8 +85,7 @@ class SpeedGraph(pg.PlotWidget):
 
 def _fmt(bps: float) -> str:
     if bps >= 1_048_576:
-        return f"{bps/1_048_576:.0f}M"
+        return f"{bps / 1_048_576:.0f}M"
     elif bps >= 1_024:
-        return f"{bps/1_024:.0f}K"
+        return f"{bps / 1_024:.0f}K"
     return f"{int(bps)}"
-

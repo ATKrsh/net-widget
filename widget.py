@@ -5,14 +5,23 @@ Uses QStackedWidget so both views are always parented (no deletion bug).
 """
 
 import math
-import time
 from pathlib import Path
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QPushButton, QLabel, QSystemTrayIcon, QMenu, QAction,
-    QApplication, QStackedWidget, QSizePolicy,
-    QLineEdit, QFrame, QSlider
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QPushButton,
+    QLabel,
+    QSystemTrayIcon,
+    QMenu,
+    QAction,
+    QApplication,
+    QStackedWidget,
+    QLineEdit,
+    QSlider,
 )
 from PyQt5.QtCore import Qt, QPoint, QSettings, QTimer, pyqtSlot, pyqtSignal, QRectF
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QPen, QColor, QFont, QTransform
@@ -47,18 +56,19 @@ def _tray_icon() -> QPixmap:
 
 # ── Animated Logo ────────────────────────────────────────────────────────────
 BUTTON_COLORS = {
-    "Simple":   ("0, 255, 180", "#00ffb4"),
+    "Simple": ("0, 255, 180", "#00ffb4"),
     "Advanced": ("167, 139, 250", "#a78bfa"),
-    "MO":       ("6, 182, 212", "#06b6d4"),
-    "IO":       ("217, 70, 239", "#d946ef"),
-    "Win":      ("59, 130, 246", "#3b82f6"),
-    "TOP":      ("6, 182, 212", "#06b6d4"),
-    "LOCK":     ("249, 115, 22", "#f97316"),
-    "RESETS":   ("236, 72, 153", "#ec4899"),
-    "SL":       ("34, 197, 94", "#22c55e"),
-    "SD":       ("239, 68, 68", "#ef4444"),
-    "SR":       ("234, 179, 8", "#eab308")
+    "MO": ("6, 182, 212", "#06b6d4"),
+    "IO": ("217, 70, 239", "#d946ef"),
+    "Win": ("59, 130, 246", "#3b82f6"),
+    "TOP": ("6, 182, 212", "#06b6d4"),
+    "LOCK": ("249, 115, 22", "#f97316"),
+    "RESETS": ("236, 72, 153", "#ec4899"),
+    "SL": ("34, 197, 94", "#22c55e"),
+    "SD": ("239, 68, 68", "#ef4444"),
+    "SR": ("234, 179, 8", "#eab308"),
 }
+
 
 class ContentAreaWidget(QWidget):
     def __init__(self, parent=None):
@@ -68,17 +78,18 @@ class ContentAreaWidget(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        
+
         # 12% opacity green border
-        border_color = QColor(57, 255, 20, 30) # 30/255 = 11.7% ~ 12%
+        border_color = QColor(57, 255, 20, 30)  # 30/255 = 11.7% ~ 12%
         bg_color = QColor(9, 11, 18)
-        
+
         rect = QRectF(0.5, 0.5, self.width() - 1, self.height() - 1)
-        
+
         p.setBrush(bg_color)
         p.setPen(QPen(border_color, 1.0))
         p.drawRoundedRect(rect, 14.0, 14.0)
         p.end()
+
 
 class AnimatedLogo(QWidget):
     def __init__(self, parent=None):
@@ -87,7 +98,7 @@ class AnimatedLogo(QWidget):
         self._phase = 0.0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(30) # ~33 fps
+        self._timer.start(30)  # ~33 fps
 
     def _tick(self):
         self._phase += 0.05
@@ -98,17 +109,17 @@ class AnimatedLogo(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        
+
         # Draw animated data bars
         p.translate(5, 15)
         for i in range(5):
             h = math.sin(self._phase - i * 0.5) * 6 + 8
-            alpha = int(abs(math.sin(self._phase - i * 0.5)) * 50) + 26
+            alpha = int(abs(math.sin(self._phase - i * 0.5)) * 255)
             p.setPen(Qt.NoPen)  # type: ignore
             p.setBrush(QColor(0, 255, 180, alpha))
-            p.drawRoundedRect(i * 6, int(-h/2), 4, int(h), 2, 2)
+            p.drawRoundedRect(i * 6, int(-h / 2), 4, int(h), 2, 2)
         p.end()
-            
+
 
 class Rotating3DText(QWidget):
     def __init__(self, text: str = "ATK", parent=None):
@@ -118,7 +129,7 @@ class Rotating3DText(QWidget):
         self._angle = 0.0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(30) # ~33 fps
+        self._timer.start(30)  # ~33 fps
 
     def _tick(self):
         self._angle += 0.05
@@ -149,7 +160,7 @@ class Rotating3DText(QWidget):
         for i in range(num_layers - 1, -1, -1):
             z_offset = i * 0.8
             x_layer = cx + (z_offset * sin_val)
-            
+
             if i == 0:
                 brightness = int(abs(cos_val) * 100) + 155
                 color = QColor(0, 255, 180, brightness)
@@ -165,21 +176,21 @@ class Rotating3DText(QWidget):
             if i == 0:
                 brightness = int(abs(cos_val) * 100) + 155
                 face_color = QColor(0, 255, 180, brightness)
-                
+
                 # Bevel Shadow (bottom-right offset)
                 shadow_transform = QTransform(transform)
                 shadow_transform.translate(0.8, 0.8)
                 p.setTransform(shadow_transform)
                 p.setPen(QColor(0, 70, 45, 220))
                 p.drawText(0, 0, self._text)
-                
+
                 # Bevel Highlight (top-left offset)
                 highlight_transform = QTransform(transform)
                 highlight_transform.translate(-0.8, -0.8)
                 p.setTransform(highlight_transform)
                 p.setPen(QColor(255, 255, 255, 230))
                 p.drawText(0, 0, self._text)
-                
+
                 # Main Face
                 p.setTransform(transform)
                 p.setPen(face_color)
@@ -189,16 +200,17 @@ class Rotating3DText(QWidget):
                 p.setTransform(transform)
                 p.setPen(color)
                 p.drawText(0, 0, self._text)
-            
+
+
 # ── Custom Vector QPixmaps for System Info Icons ─────────────────────────────
 def get_cpu_pixmap() -> QPixmap:
     px = QPixmap(18, 18)
     px.fill(Qt.transparent)
     p = QPainter(px)
     p.setRenderHint(QPainter.Antialiasing)
-    
+
     color = QColor("#fbbf24")
-    
+
     # Draw pins
     p.setPen(QPen(color, 1.0))
     for x in [5, 7, 9, 11, 13]:
@@ -207,17 +219,17 @@ def get_cpu_pixmap() -> QPixmap:
     for y in [5, 7, 9, 11, 13]:
         p.drawLine(1, y, 2, y)
         p.drawLine(15, y, 16, y)
-        
+
     # Draw chip substrate
     p.setPen(QPen(color, 1.2))
     p.setBrush(QColor(251, 191, 36, 30))
     p.drawRoundedRect(3, 3, 12, 12, 1, 1)
-    
+
     # Draw silicon die (core)
     p.setPen(QPen(color, 0.8))
     p.setBrush(QColor(251, 191, 36, 120))
     p.drawRect(7, 7, 4, 4)
-    
+
     p.end()
     return px
 
@@ -227,30 +239,30 @@ def get_gpu_pixmap() -> QPixmap:
     px.fill(Qt.transparent)
     p = QPainter(px)
     p.setRenderHint(QPainter.Antialiasing)
-    
+
     color = QColor("#a78bfa")
-    
+
     # PCIe bracket (left edge)
     p.setPen(QPen(color, 1.2))
     p.drawLine(1, 2, 1, 15)
     p.drawLine(0, 4, 1, 4)
     p.drawLine(0, 12, 1, 12)
-    
+
     # Shroud
     p.setPen(QPen(color, 1.0))
     p.setBrush(QColor(167, 139, 250, 30))
     p.drawRoundedRect(2, 4, 14, 10, 1, 1)
-    
+
     # Fan
     p.setBrush(QColor(167, 139, 250, 70))
     p.drawEllipse(7, 7, 4, 4)
     p.drawLine(9, 7, 9, 11)
     p.drawLine(7, 9, 11, 9)
-    
+
     # PCIe gold fingers (bottom connector)
     for x in range(4, 15, 2):
         p.drawLine(x, 15, x, 15)
-        
+
     p.end()
     return px
 
@@ -260,27 +272,55 @@ def get_ram_pixmap() -> QPixmap:
     px.fill(Qt.transparent)
     p = QPainter(px)
     p.setRenderHint(QPainter.Antialiasing)
-    
+
     color = QColor("#00ffb4")
-    
+
     # RAM stick PCB (horizontal)
     p.setPen(QPen(color, 1.0))
     p.setBrush(QColor(0, 255, 180, 25))
     p.drawRoundedRect(1, 6, 16, 6, 1, 1)
-    
+
     # Chips
     p.setPen(Qt.NoPen)
     p.setBrush(color)
     p.drawRect(3, 8, 2, 3)
     p.drawRect(7, 8, 2, 3)
     p.drawRect(11, 8, 2, 3)
-    
+
     # Pins
     p.setPen(QPen(color, 0.8))
     for x in range(2, 16, 2):
         if x != 9:  # notch
             p.drawLine(x, 13, x, 14)
-            
+
+    p.end()
+    return px
+
+
+def get_hdd_pixmap() -> QPixmap:
+    px = QPixmap(18, 18)
+    px.fill(Qt.transparent)
+    p = QPainter(px)
+    p.setRenderHint(QPainter.Antialiasing)
+
+    color = QColor("#ec4899")
+
+    # Outer drive casing
+    p.setPen(QPen(color, 1.2))
+    p.setBrush(QColor(236, 72, 153, 25))
+    p.drawRoundedRect(3, 2, 12, 14, 2, 2)
+
+    # Inner platter
+    p.setPen(QPen(color, 1.0))
+    p.drawEllipse(5, 6, 8, 8)
+
+    # Spindle hole
+    p.setBrush(color)
+    p.drawEllipse(8, 9, 2, 2)
+
+    # Reader arm
+    p.drawLine(12, 14, 9, 10)
+
     p.end()
     return px
 
@@ -290,22 +330,22 @@ def get_uptime_pixmap() -> QPixmap:
     px.fill(Qt.transparent)
     p = QPainter(px)
     p.setRenderHint(QPainter.Antialiasing)
-    
+
     color = QColor("#60a5fa")
-    
+
     # Outer ring
     p.setPen(QPen(color, 1.2))
     p.setBrush(QColor(96, 165, 250, 25))
     p.drawEllipse(3, 3, 12, 12)
-    
+
     # Hands
     p.drawLine(9, 9, 9, 5)
     p.drawLine(9, 9, 12, 9)
-    
+
     # Buttons
     p.setBrush(color)
     p.drawRect(8, 1, 2, 2)
-    
+
     p.end()
     return px
 
@@ -331,7 +371,9 @@ class _SysInfoBar(QWidget):
         def _icon_lbl(pixmap: QPixmap) -> QLabel:
             l = QLabel()
             l.setPixmap(pixmap)
-            l.setStyleSheet("background: transparent; border: none; padding-right: 1px;")
+            l.setStyleSheet(
+                "background: transparent; border: none; padding-right: 1px;"
+            )
             l.setAlignment(Qt.AlignCenter)  # type: ignore
             return l
 
@@ -370,6 +412,11 @@ class _SysInfoBar(QWidget):
         row1.addWidget(self._ram_val)
         row1.addWidget(_dot())
 
+        row1.addWidget(_icon_lbl(get_hdd_pixmap()))
+        self._hdd_val = _val("#ec4899")
+        row1.addWidget(self._hdd_val)
+        row1.addWidget(_dot())
+
         row1.addWidget(_icon_lbl(get_uptime_pixmap()))
         self._up_val = _val("#60a5fa", min_w=84)
         row1.addWidget(self._up_val)
@@ -400,7 +447,9 @@ class _SysInfoBar(QWidget):
 
         dot = QLabel("●")
         dot.setFixedWidth(12)
-        dot.setStyleSheet("color: rgba(255,255,255,0.18); font-size: 12px; background: transparent; border: none;")
+        dot.setStyleSheet(
+            "color: rgba(255,255,255,0.18); font-size: 12px; background: transparent; border: none;"
+        )
         row_lay.addWidget(dot)
 
         name_lbl = QLabel(name)
@@ -412,7 +461,9 @@ class _SysInfoBar(QWidget):
         row_lay.addWidget(name_lbl)
 
         read_arrow = QLabel("↓")
-        read_arrow.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;")
+        read_arrow.setStyleSheet(
+            "color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;"
+        )
         read_arrow.setFixedWidth(12)
         row_lay.addWidget(read_arrow)
 
@@ -425,7 +476,9 @@ class _SysInfoBar(QWidget):
         row_lay.addWidget(read_lbl)
 
         write_arrow = QLabel("↑")
-        write_arrow.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;")
+        write_arrow.setStyleSheet(
+            "color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;"
+        )
         write_arrow.setFixedWidth(12)
         row_lay.addWidget(write_arrow)
 
@@ -441,7 +494,15 @@ class _SysInfoBar(QWidget):
         grid_row = idx // 2
         grid_col = idx % 2
         self._drives_layout.addWidget(row_w, grid_row, grid_col)
-        self._drive_rows[name] = (row_w, name_lbl, read_lbl, write_lbl, dot, read_arrow, write_arrow)
+        self._drive_rows[name] = (
+            row_w,
+            name_lbl,
+            read_lbl,
+            write_lbl,
+            dot,
+            read_arrow,
+            write_arrow,
+        )
 
         n_grid_rows = math.ceil(len(self._drive_rows) / 2)
         new_h = 56 + 6 + n_grid_rows * 22
@@ -453,9 +514,9 @@ class _SysInfoBar(QWidget):
     @staticmethod
     def _fmt(bps: float) -> str:
         if bps >= 1_048_576:
-            return f"{bps/1_048_576:.1f}M"
+            return f"{bps / 1_048_576:.1f}M"
         if bps >= 1_024:
-            return f"{bps/1_024:.0f}K"
+            return f"{bps / 1_024:.0f}K"
         return f"{int(bps)}B"
 
     @staticmethod
@@ -468,56 +529,109 @@ class _SysInfoBar(QWidget):
             return f"{d}d {h}h {m}m"
         return f"{h}h {m:02d}m" if h else f"{m}m {s2:02d}s"
 
-    def update_sysinfo(self, cpu: float | None, gpu: float | None, ram: float | None,
-                       uptime: float, disk_speeds: dict):
+    def update_sysinfo(
+        self,
+        cpu: float | None,
+        gpu: float | None,
+        ram: float | None,
+        hdd: float | None,
+        uptime: float,
+        disk_speeds: dict,
+    ):
         self._cpu_val.setText(f"{cpu:.0f}%" if cpu is not None else "N/A")
         self._gpu_val.setText(f"{gpu:.0f}%" if gpu is not None else "N/A")
         self._ram_val.setText(f"{ram:.0f}%" if ram is not None else "N/A")
+        self._hdd_val.setText(f"{hdd:.0f}%" if hdd is not None else "N/A")
         self._up_val.setText(self._fmt_uptime(uptime))
 
         for name, (rbps, wbps) in disk_speeds.items():
-            _, _name_lbl, read_lbl, write_lbl, dot, read_arrow, write_arrow = self._get_or_create_drive_row(name)
+            _, _name_lbl, read_lbl, write_lbl, dot, read_arrow, write_arrow = (
+                self._get_or_create_drive_row(name)
+            )
 
             if rbps > 0:
                 read_lbl.setText(self._fmt(rbps))
-                read_lbl.setStyleSheet("color: #39ff14; font-size: 16px; font-weight: normal; background: transparent; border: none;")
-                read_arrow.setStyleSheet("color: #39ff14; font-size: 14px; background: transparent; border: none;")
+                read_lbl.setStyleSheet(
+                    "color: #39ff14; font-size: 16px; font-weight: normal; background: transparent; border: none;"
+                )
+                read_arrow.setStyleSheet(
+                    "color: #39ff14; font-size: 14px; background: transparent; border: none;"
+                )
             else:
                 read_lbl.setText("0B")
-                read_lbl.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;")
-                read_arrow.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;")
+                read_lbl.setStyleSheet(
+                    "color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;"
+                )
+                read_arrow.setStyleSheet(
+                    "color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;"
+                )
 
             if wbps > 0:
                 write_lbl.setText(self._fmt(wbps))
-                write_lbl.setStyleSheet("color: #ff3333; font-size: 16px; font-weight: normal; background: transparent; border: none;")
-                write_arrow.setStyleSheet("color: #ff3333; font-size: 14px; background: transparent; border: none;")
+                write_lbl.setStyleSheet(
+                    "color: #ff3333; font-size: 16px; font-weight: normal; background: transparent; border: none;"
+                )
+                write_arrow.setStyleSheet(
+                    "color: #ff3333; font-size: 14px; background: transparent; border: none;"
+                )
             else:
                 write_lbl.setText("0B")
-                write_lbl.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;")
-                write_arrow.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;")
+                write_lbl.setStyleSheet(
+                    "color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;"
+                )
+                write_arrow.setStyleSheet(
+                    "color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;"
+                )
 
             if rbps > 0 and wbps > 0:
-                dot.setStyleSheet("color: #fbbf24; font-size: 12px; background: transparent; border: none;")
+                dot.setStyleSheet(
+                    "color: #fbbf24; font-size: 12px; background: transparent; border: none;"
+                )
             elif rbps > 0:
-                dot.setStyleSheet("color: #39ff14; font-size: 12px; background: transparent; border: none;")
+                dot.setStyleSheet(
+                    "color: #39ff14; font-size: 12px; background: transparent; border: none;"
+                )
             elif wbps > 0:
-                dot.setStyleSheet("color: #ff3333; font-size: 12px; background: transparent; border: none;")
+                dot.setStyleSheet(
+                    "color: #ff3333; font-size: 12px; background: transparent; border: none;"
+                )
             else:
-                dot.setStyleSheet("color: rgba(255,255,255,0.18); font-size: 12px; background: transparent; border: none;")
+                dot.setStyleSheet(
+                    "color: rgba(255,255,255,0.18); font-size: 12px; background: transparent; border: none;"
+                )
 
     def reset(self):
         self._cpu_val.setText("0%")
         self._gpu_val.setText("0%")
         self._ram_val.setText("0%")
+        self._hdd_val.setText("0%")
         self._up_val.setText("0s")
-        for name, (_, _name_lbl, read_lbl, write_lbl, dot, read_arrow, write_arrow) in self._drive_rows.items():
+        for name, (
+            _,
+            _name_lbl,
+            read_lbl,
+            write_lbl,
+            dot,
+            read_arrow,
+            write_arrow,
+        ) in self._drive_rows.items():
             read_lbl.setText("0B")
-            read_lbl.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;")
-            read_arrow.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;")
+            read_lbl.setStyleSheet(
+                "color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;"
+            )
+            read_arrow.setStyleSheet(
+                "color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;"
+            )
             write_lbl.setText("0B")
-            write_lbl.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;")
-            write_arrow.setStyleSheet("color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;")
-            dot.setStyleSheet("color: rgba(255,255,255,0.18); font-size: 12px; background: transparent; border: none;")
+            write_lbl.setStyleSheet(
+                "color: rgba(255, 255, 255, 0.25); font-size: 16px; font-weight: normal; background: transparent; border: none;"
+            )
+            write_arrow.setStyleSheet(
+                "color: rgba(255, 255, 255, 0.25); font-size: 14px; background: transparent; border: none;"
+            )
+            dot.setStyleSheet(
+                "color: rgba(255,255,255,0.18); font-size: 12px; background: transparent; border: none;"
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -546,7 +660,7 @@ class TitleBar(QWidget):
         d_lay = QHBoxLayout(self._dots_widget)
         d_lay.setContentsMargins(0, 0, 0, 0)
         d_lay.setSpacing(6)
-        
+
         excluded = {"SL", "SD", "SR", "MO", "Win", "RESETS", "Simple", "Advanced"}
         for name, (_, hex_col) in BUTTON_COLORS.items():
             if name in excluded:
@@ -557,9 +671,9 @@ class TitleBar(QWidget):
             l.setToolTip(name)
             self._dots[name] = l
             d_lay.addWidget(l)
-            
+
         lay.addWidget(self._dots_widget)
-        
+
         # 2. Stretch to push rotating text and window controls to the right
         lay.addStretch()
 
@@ -567,7 +681,7 @@ class TitleBar(QWidget):
         title = Rotating3DText("ATK")
         title.setObjectName("AppTitle")
         lay.addWidget(title)
-        
+
         lay.addSpacing(10)
 
         # 4. Window controls
@@ -585,14 +699,16 @@ class TitleBar(QWidget):
         lay.addWidget(min_b)
         lay.addWidget(close_b)
 
-
-
     def mousePressEvent(self, a0):
         if a0.button() == Qt.LeftButton and not self._win.position_locked:  # type: ignore  # type: ignore # pyre-ignore
             self._drag = a0.globalPos() - self._win.frameGeometry().topLeft()
 
     def mouseMoveEvent(self, a0):
-        if self._drag and a0.buttons() & Qt.LeftButton and not self._win.position_locked:  # type: ignore  # type: ignore # pyre-ignore
+        if (
+            self._drag
+            and a0.buttons() & Qt.LeftButton
+            and not self._win.position_locked
+        ):  # type: ignore  # type: ignore # pyre-ignore
             self._win.move(a0.globalPos() - self._drag)
 
     def mouseReleaseEvent(self, a0):
@@ -601,16 +717,15 @@ class TitleBar(QWidget):
 
 # ─────────────────────────────────────────────────────────────────────────────
 class NetWidget(QMainWindow):
-
-    SW, SH   = 520, 415     # Simple   size
-    AW, AH   = 460, 769     # Advanced size
+    SW, SH = 520, 415  # Simple   size
+    AW, AH = 460, 769  # Advanced size
 
     def __init__(self):
         super().__init__()
         self._mode = "simple"
-        self._always_on_top  = True   # default: on top
-        self._pos_locked     = False  # default: draggable
-        self._store   = DataStore()
+        self._always_on_top = True  # default: on top
+        self._pos_locked = False  # default: draggable
+        self._store = DataStore()
         self._monitor = NetworkMonitor()
         self._last_recv = self._last_sent = 0
 
@@ -620,9 +735,9 @@ class NetWidget(QMainWindow):
         self._setup_tray()
 
         # ── Hardware temp sampler (display: 0.1 s, sensor read: 1 s) ─
-        self._hw = HardwareSampler(interval=1.0)   # sensor read stays at 1 s
+        self._hw = HardwareSampler(interval=1.0)  # sensor read stays at 1 s
         self._temp_timer = QTimer(self)
-        self._temp_timer.setInterval(100)           # push cached value every 0.1 s
+        self._temp_timer.setInterval(100)  # push cached value every 0.1 s
         self._temp_timer.timeout.connect(self._on_temp_tick)
         self._temp_timer.start()
 
@@ -637,7 +752,7 @@ class NetWidget(QMainWindow):
     def _setup_window(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)  # type: ignore  # type: ignore # pyre-ignore
         self.setAttribute(Qt.WA_TranslucentBackground, True)  # type: ignore  # type: ignore # pyre-ignore
-        
+
         self.setWindowTitle("Net Monitor")
 
     def _apply_qss(self):
@@ -667,9 +782,9 @@ class NetWidget(QMainWindow):
         # Stack — both views always parented, never destroyed
         self._stack = QStackedWidget()
         self._stack.setStyleSheet("background: transparent;")
-        self._simple_view   = SimpleView()
+        self._simple_view = SimpleView()
         self._advanced_view = AdvancedView()
-        self._stack.addWidget(self._simple_view)    # 0
+        self._stack.addWidget(self._simple_view)  # 0
         self._stack.addWidget(self._advanced_view)  # 1
         self._stack.setCurrentIndex(0)
         c_lay.addWidget(self._stack)
@@ -680,8 +795,6 @@ class NetWidget(QMainWindow):
 
         self.setFixedSize(self.SW, self.SH)
 
-
-
     def _update_dot(self, name: str, active: bool):
         dot = self._title_bar._dots.get(name)
         if dot:
@@ -689,7 +802,9 @@ class NetWidget(QMainWindow):
                 hex_col = BUTTON_COLORS[name][1]
                 dot.setStyleSheet(f"background: {hex_col}; border-radius: 3px;")
             else:
-                dot.setStyleSheet("background: rgba(100, 100, 100, 0.4); border-radius: 3px;")
+                dot.setStyleSheet(
+                    "background: rgba(100, 100, 100, 0.4); border-radius: 3px;"
+                )
 
     def _on_drive_added(self):
         """Grow the simple-mode window height to accommodate a new drive row."""
@@ -698,7 +813,7 @@ class NetWidget(QMainWindow):
         extra = 0
         if n_rows > 0:
             extra = 28 + (n_rows - 1) * 22
-        
+
         self.SH = 415 + extra
         if self._mode == "simple":
             self.setFixedSize(self.SW, self.SH)
@@ -709,7 +824,9 @@ class NetWidget(QMainWindow):
         vlay.setContentsMargins(0, 0, 0, 0)
         vlay.setSpacing(0)
 
-        def _make_btn(style_key, display_text, slot, checkable=False, checked=False, active=False):
+        def _make_btn(
+            style_key, display_text, slot, checkable=False, checked=False, active=False
+        ):
             b = QPushButton(display_text)
             b.setCursor(Qt.PointingHandCursor)  # type: ignore
 
@@ -726,7 +843,7 @@ class NetWidget(QMainWindow):
                 "QPushButton:hover {"
                 f"  background: rgba({rgb}, 0.1);"
                 "}"
-                f"QPushButton:checked, QPushButton[active=\"true\"] {{"
+                f'QPushButton:checked, QPushButton[active="true"] {{'
                 f"  color: {hex_col};"
                 f"  background: rgba({rgb}, 0.15);"
                 f"  border: 1px solid {hex_col};"
@@ -762,9 +879,9 @@ class NetWidget(QMainWindow):
         l1.setContentsMargins(14, 4, 14, 4)
         l1.setSpacing(8)
 
-        self._os_lock_btn  = _make_btn("SL", "PC Lock", self._on_os_lock)
+        self._os_lock_btn = _make_btn("SL", "PC Lock", self._on_os_lock)
         self._shutdown_btn = _make_btn("SD", "Shutdown", self._on_shutdown)
-        self._restart_btn  = _make_btn("SR", "Restart", self._on_restart)
+        self._restart_btn = _make_btn("SR", "Restart", self._on_restart)
         self._mon_btn = _make_btn("MO", "Monitor Off", self._on_monitor_off)
         self._int_btn = _make_btn("IO", "Internet Off", self._on_internet_off)
 
@@ -793,16 +910,20 @@ class NetWidget(QMainWindow):
 
         # Badge
         self._badge = QLabel("—")
-        self._badge.setStyleSheet("color: #00ff41; font-size: 10px; font-weight: normal; background: transparent; border: none;")
+        self._badge.setStyleSheet(
+            "color: #00ff41; font-size: 10px; font-weight: normal; background: transparent; border: none;"
+        )
         l2.addWidget(self._badge)
-        
+
         l2.addStretch()
 
         # Opacity Slider
         lbl_op = QLabel("OPACITY")
-        lbl_op.setStyleSheet("color: rgba(255,255,255,0.70); font-size: 9px; font-weight: normal; background: transparent; border: none;")
+        lbl_op.setStyleSheet(
+            "color: rgba(255,255,255,0.70); font-size: 9px; font-weight: normal; background: transparent; border: none;"
+        )
         l2.addWidget(lbl_op)
-        
+
         self._opacity_slider = QSlider(Qt.Horizontal)  # type: ignore
         self._opacity_slider.setRange(10, 100)
         self._opacity_slider.setFixedWidth(70)
@@ -835,12 +956,16 @@ class NetWidget(QMainWindow):
 
         # Interval Input
         lbl_int = QLabel("INTERVAL")
-        lbl_int.setStyleSheet("color: rgba(255,255,255,0.70); font-size: 9px; font-weight: normal; background: transparent; border: none;")
+        lbl_int.setStyleSheet(
+            "color: rgba(255,255,255,0.70); font-size: 9px; font-weight: normal; background: transparent; border: none;"
+        )
         l2.addWidget(lbl_int)
 
         self._interval_input = QLineEdit("1000")
         self._interval_input.setFixedWidth(34)
-        self._interval_input.setStyleSheet("background: rgba(0,0,0,0.3); color: #00ffb4; border: 1px solid rgba(57,255,20,0.3); border-radius: 3px; font-size: 10px;")
+        self._interval_input.setStyleSheet(
+            "background: rgba(0,0,0,0.3); color: #00ffb4; border: 1px solid rgba(57,255,20,0.3); border-radius: 3px; font-size: 10px;"
+        )
         self._interval_input.setAlignment(Qt.AlignCenter)  # type: ignore
         self._interval_input.returnPressed.connect(self._on_input_interval)  # type: ignore
         self._interval_input.textEdited.connect(self._on_interval_edited)  # type: ignore
@@ -848,25 +973,27 @@ class NetWidget(QMainWindow):
         l2.addWidget(self._interval_input)
 
         # Toggles
-        self._pin_btn = _make_btn("TOP", "AOT", self._on_pin_toggled, checkable=True, checked=True)
-        self._lock_btn = _make_btn("LOCK", "LOCK", self._on_lock_toggled, checkable=True, checked=False)
+        self._pin_btn = _make_btn(
+            "TOP", "AOT", self._on_pin_toggled, checkable=True, checked=True
+        )
+        self._lock_btn = _make_btn(
+            "LOCK", "LOCK", self._on_lock_toggled, checkable=True, checked=False
+        )
         self._reset_btn = _make_btn("RESETS", "Reset", self._on_reset)
-        
+
         l2.addWidget(self._pin_btn)
         l2.addWidget(self._lock_btn)
         l2.addWidget(self._reset_btn)
 
         vlay.addWidget(r2)
         return container
-        
+
     def _set_interface(self, name: str):
         self._badge.setText(name if len(name) <= 18 else name[:16] + "…")
-        
+
     def _update_mode_btns(self, mode: str):
         self._update_dot("Simple", mode == "simple")
         self._update_dot("Advanced", mode == "advanced")
-
-
 
     # ── Tray ─────────────────────────────────────────────────────────────
 
@@ -876,17 +1003,19 @@ class NetWidget(QMainWindow):
         m = QMenu()
         m.setStyleSheet(self.styleSheet())
         for txt, fn in [
-            ("Show",           self.show_widget),
-            (None,             None),
-            ("Simple mode",    lambda: self.set_mode("simple")),
-            ("Advanced mode",  lambda: self.set_mode("advanced")),
-            (None,             None),
-            ("Exit",           self.close_app),
+            ("Show", self.show_widget),
+            (None, None),
+            ("Simple mode", lambda: self.set_mode("simple")),
+            ("Advanced mode", lambda: self.set_mode("advanced")),
+            (None, None),
+            ("Exit", self.close_app),
         ]:
             if txt is None:
                 m.addSeparator()
             else:
-                a = QAction(txt, self); a.triggered.connect(fn); m.addAction(a)  # type: ignore
+                a = QAction(txt, self)
+                a.triggered.connect(fn)
+                m.addAction(a)  # type: ignore
         self._tray.setContextMenu(m)
         self._tray.activated.connect(
             lambda r: self.show_widget() if r == QSystemTrayIcon.DoubleClick else None  # type: ignore  # type: ignore # pyre-ignore
@@ -937,6 +1066,7 @@ class NetWidget(QMainWindow):
                 self._temp_timer.setInterval(v)
         except ValueError:
             pass
+
     # ── Stats ─────────────────────────────────────────────────────────────
 
     @pyqtSlot(dict)
@@ -944,59 +1074,75 @@ class NetWidget(QMainWindow):
         self._last_recv = s["session_recv"]
         self._last_sent = s["session_sent"]
         self._set_interface(s["interface"])
-        self._store.update_all_sessions(self._last_recv, self._last_sent, s["interface"])
-        
+        self._store.update_all_sessions(
+            self._last_recv, self._last_sent, s["interface"]
+        )
+
         # Adjust session statistics using baseline
         disp_recv = max(0, self._last_recv - self._store.this_session_baseline_recv)
         disp_sent = max(0, self._last_sent - self._store.this_session_baseline_sent)
-        
+
         s_disp = dict(s)
         s_disp["session_recv"] = disp_recv
         s_disp["session_sent"] = disp_sent
-        
-        self._simple_view.update_stats(s_disp, self._store.all_sessions_recv, self._store.all_sessions_sent)
+
+        self._simple_view.update_stats(
+            s_disp, self._store.all_sessions_recv, self._store.all_sessions_sent
+        )
         self._advanced_view.update_stats(s_disp)
 
     @pyqtSlot()
     def _on_reset_session(self):
         self._store.reset_this_session(self._last_recv, self._last_sent)
-        self._simple_view.update_stats({
-            "download_speed": 0.0,
-            "upload_speed": 0.0,
-            "session_recv": 0,
-            "session_sent": 0,
-        }, self._store.all_sessions_recv, self._store.all_sessions_sent)
+        self._simple_view.update_stats(
+            {
+                "download_speed": 0.0,
+                "upload_speed": 0.0,
+                "session_recv": 0,
+                "session_sent": 0,
+            },
+            self._store.all_sessions_recv,
+            self._store.all_sessions_sent,
+        )
 
     @pyqtSlot()
     def _on_reset_all_time(self):
-        self._store.reset_all_sessions(self._last_recv, self._last_sent, self._monitor.interface_name)
+        self._store.reset_all_sessions(
+            self._last_recv, self._last_sent, self._monitor.interface_name
+        )
         # Instantly update SimpleView so the UI reflects 0 immediately
         disp_recv = max(0, self._last_recv - self._store.this_session_baseline_recv)
         disp_sent = max(0, self._last_sent - self._store.this_session_baseline_sent)
-        self._simple_view.update_stats({
-            "download_speed": 0.0,
-            "upload_speed": 0.0,
-            "session_recv": disp_recv,
-            "session_sent": disp_sent,
-        }, 0, 0)
-        
+        self._simple_view.update_stats(
+            {
+                "download_speed": 0.0,
+                "upload_speed": 0.0,
+                "session_recv": disp_recv,
+                "session_sent": disp_sent,
+            },
+            0,
+            0,
+        )
+
         # 6. Instantly refresh AdvancedView UI to display 0s
-        self._advanced_view.update_stats({
-            "download_speed": 0.0,
-            "upload_speed": 0.0,
-            "session_recv": 0,
-            "session_sent": 0,
-            "packets_recv": 0,
-            "packets_sent": 0,
-            "errin": 0,
-            "errout": 0,
-            "dropin": 0,
-            "dropout": 0,
-            "interface": self._monitor.interface_name,
-            "dl_history": [],
-            "ul_history": [],
-        })
-        
+        self._advanced_view.update_stats(
+            {
+                "download_speed": 0.0,
+                "upload_speed": 0.0,
+                "session_recv": 0,
+                "session_sent": 0,
+                "packets_recv": 0,
+                "packets_sent": 0,
+                "errin": 0,
+                "errout": 0,
+                "dropin": 0,
+                "dropout": 0,
+                "interface": self._monitor.interface_name,
+                "dl_history": [],
+                "ul_history": [],
+            }
+        )
+
         # 7. Reset CPU/GPU temperature values in SimpleView to 0
         self._simple_view.reset_temps()
 
@@ -1005,45 +1151,58 @@ class NetWidget(QMainWindow):
         # 1. Reset This Session baseline in store
         self._store.reset_this_session(self._last_recv, self._last_sent)
         # 2. Reset All Sessions totals in store
-        self._store.reset_all_sessions(self._last_recv, self._last_sent, self._monitor.interface_name)
-        
+        self._store.reset_all_sessions(
+            self._last_recv, self._last_sent, self._monitor.interface_name
+        )
+
         # 3. Reset AdvancedView peaks and averages
         self._advanced_view._peak_dl = self._advanced_view._peak_ul = 0.0
-        self._advanced_view._count = self._advanced_view._sum_dl = self._advanced_view._sum_ul = 0
-        
+        self._advanced_view._count = self._advanced_view._sum_dl = (
+            self._advanced_view._sum_ul
+        ) = 0
+
         # 4. Clear monitor graph history
         self._monitor.dl_history.clear()
         self._monitor.ul_history.clear()
-        
+
         # 5. Instantly refresh SimpleView UI to display 0s
-        self._simple_view.update_stats({
-            "download_speed": 0.0,
-            "upload_speed": 0.0,
-            "session_recv": 0,
-            "session_sent": 0,
-        }, 0, 0)
-        
+        self._simple_view.update_stats(
+            {
+                "download_speed": 0.0,
+                "upload_speed": 0.0,
+                "session_recv": 0,
+                "session_sent": 0,
+            },
+            0,
+            0,
+        )
+
         # 6. Instantly refresh AdvancedView UI to display 0s
-        self._advanced_view.update_stats({
-            "download_speed": 0.0,
-            "upload_speed": 0.0,
-            "session_recv": 0,
-            "session_sent": 0,
-            "packets_recv": 0,
-            "packets_sent": 0,
-            "errin": 0,
-            "errout": 0,
-            "dropin": 0,
-            "dropout": 0,
-            "interface": self._monitor.interface_name,
-            "dl_history": [],
-            "ul_history": [],
-        })
-        self._simple_view.reset_temps()
+        self._advanced_view.update_stats(
+            {
+                "download_speed": 0.0,
+                "upload_speed": 0.0,
+                "session_recv": 0,
+                "session_sent": 0,
+                "packets_recv": 0,
+                "packets_sent": 0,
+                "errin": 0,
+                "errout": 0,
+                "dropin": 0,
+                "dropout": 0,
+                "interface": self._monitor.interface_name,
+                "dl_history": [],
+                "ul_history": [],
+            }
+        )
+        self._simple_view.reset_all()
+        self._sysinfo_bar.reset()
+        self._monitor.reset_counters()
 
     def _on_os_lock(self):
         try:
             import ctypes
+
             ctypes.windll.user32.LockWorkStation()
         except Exception as e:
             print(f"OS lock failed: {e}")
@@ -1051,38 +1210,52 @@ class NetWidget(QMainWindow):
     def _on_shutdown(self):
         try:
             import subprocess
-            subprocess.run(["shutdown", "/s", "/t", "0"],
-                          capture_output=True, creationflags=0x08000000)
+
+            subprocess.run(
+                ["shutdown", "/s", "/t", "0"],
+                capture_output=True,
+                creationflags=0x08000000,
+            )
         except Exception as e:
             print(f"Shutdown failed: {e}")
 
     def _on_restart(self):
         try:
             import subprocess
-            subprocess.run(["shutdown", "/r", "/t", "0"],
-                          capture_output=True, creationflags=0x08000000)
+
+            subprocess.run(
+                ["shutdown", "/r", "/t", "0"],
+                capture_output=True,
+                creationflags=0x08000000,
+            )
         except Exception as e:
             print(f"Restart failed: {e}")
 
     def _on_monitor_off(self):
         try:
             import ctypes
+
             ctypes.windll.user32.SendMessageW(0xFFFF, 0x0112, 0xF170, 2)
         except Exception as e:
             print(f"Monitor off failed: {e}")
 
     def _on_internet_off(self):
         import subprocess
+
         # Toggle state based on current text
         if self._int_btn.text() == "Internet Off":
-            subprocess.run(["ipconfig", "/release"], capture_output=True, creationflags=0x08000000)
+            subprocess.run(
+                ["ipconfig", "/release"], capture_output=True, creationflags=0x08000000
+            )
             self._int_btn.setText("Internet On")
             self._int_btn.setProperty("active", True)
         else:
-            subprocess.run(["ipconfig", "/renew"], capture_output=True, creationflags=0x08000000)
+            subprocess.run(
+                ["ipconfig", "/renew"], capture_output=True, creationflags=0x08000000
+            )
             self._int_btn.setText("Internet Off")
             self._int_btn.setProperty("active", False)
-        
+
         style = self._int_btn.style()
         if style:
             style.unpolish(self._int_btn)
@@ -1118,6 +1291,7 @@ class NetWidget(QMainWindow):
             self._hw.cpu_usage,
             self._hw.gpu_usage,
             self._hw.ram_usage,
+            self._hw.hdd_usage,
             self._hw.uptime_secs,
             self._hw.disk_speeds,
         )
@@ -1126,29 +1300,29 @@ class NetWidget(QMainWindow):
 
     def _restore_pos(self):
         s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
-        pos        = s.value("position")
-        mode       = s.value("mode", "simple")
-        opacity    = int(s.value("opacity", 100))
+        pos = s.value("position")
+        mode = s.value("mode", "simple")
+        opacity = int(s.value("opacity", 100))
         always_top = s.value("always_top", "true") == "true"
         pos_locked = s.value("pos_locked", "false") == "true"
-        
+
         if pos:
             self.move(pos)
         else:
             r = QApplication.primaryScreen().geometry()  # type: ignore
             self.move(r.right() - self.width() - 30, r.bottom() - self.height() - 60)
-            
+
         opacity = max(10, min(100, opacity))
         self._opacity_slider.setValue(opacity)
         self._apply_opacity(opacity)
-        
+
         self._always_on_top = always_top
-        self._pos_locked    = pos_locked
+        self._pos_locked = pos_locked
         self._pin_btn.setChecked(always_top)
         self._lock_btn.setChecked(pos_locked)
         self._apply_window_flags()
         self.set_mode(mode)
-        
+
         interval = int(s.value("interval", 1000))
         self._interval_input.setText(str(interval))
         self._monitor.interval = interval / 1000.0
@@ -1157,12 +1331,12 @@ class NetWidget(QMainWindow):
 
     def _save(self):
         s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
-        s.setValue("position",   self.pos())
-        s.setValue("mode",       self._mode)
-        s.setValue("opacity",    str(self._opacity_slider.value()))
+        s.setValue("position", self.pos())
+        s.setValue("mode", self._mode)
+        s.setValue("opacity", str(self._opacity_slider.value()))
         s.setValue("always_top", str(self._always_on_top).lower())
         s.setValue("pos_locked", str(self._pos_locked).lower())
-        s.setValue("interval",   self._interval_input.text())
+        s.setValue("interval", self._interval_input.text())
 
     # ── Close ─────────────────────────────────────────────────────────────
 

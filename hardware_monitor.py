@@ -2,12 +2,11 @@
 hardware_monitor.py
 Reads CPU/GPU temps, usage, RAM usage, Uptime, and per-drive Disk speeds.
 """
+
 import platform
 import threading
 import subprocess
 import time
-import re
-from pathlib import Path
 import psutil
 
 _IS_WIN = platform.system() == "Windows"
@@ -25,7 +24,7 @@ if _IS_WIN:
         _fields_ = [
             ("CStatus", wintypes.DWORD),
             ("dummy", wintypes.DWORD),
-            ("doubleValue", ctypes.c_double)
+            ("doubleValue", ctypes.c_double),
         ]
 
     class PdhDiskSampler:
@@ -45,8 +44,18 @@ if _IS_WIN:
                         continue
                     h_read = wintypes.HANDLE()
                     h_write = wintypes.HANDLE()
-                    r_res = self.pdh.PdhAddCounterW(self.h_query, f"\\LogicalDisk({letter})\\Disk Read Bytes/sec", 0, ctypes.byref(h_read))
-                    w_res = self.pdh.PdhAddCounterW(self.h_query, f"\\LogicalDisk({letter})\\Disk Write Bytes/sec", 0, ctypes.byref(h_write))
+                    r_res = self.pdh.PdhAddCounterW(
+                        self.h_query,
+                        f"\\LogicalDisk({letter})\\Disk Read Bytes/sec",
+                        0,
+                        ctypes.byref(h_read),
+                    )
+                    w_res = self.pdh.PdhAddCounterW(
+                        self.h_query,
+                        f"\\LogicalDisk({letter})\\Disk Write Bytes/sec",
+                        0,
+                        ctypes.byref(h_write),
+                    )
                     if r_res == 0 and w_res == 0:
                         self.counters[letter] = (h_read, h_write)
 
@@ -55,14 +64,24 @@ if _IS_WIN:
             res = self.pdh.PdhCollectQueryData(self.h_query)
             if res != 0:
                 return speeds
-            
+
             val = PDH_FMT_COUNTERVALUE_DOUBLE()
             for letter, (h_read, h_write) in self.counters.items():
                 r_speed = 0.0
                 w_speed = 0.0
-                if self.pdh.PdhGetFormattedCounterValue(h_read, 0x00000200, None, ctypes.byref(val)) == 0:
+                if (
+                    self.pdh.PdhGetFormattedCounterValue(
+                        h_read, 0x00000200, None, ctypes.byref(val)
+                    )
+                    == 0
+                ):
                     r_speed = max(0.0, val.doubleValue)
-                if self.pdh.PdhGetFormattedCounterValue(h_write, 0x00000200, None, ctypes.byref(val)) == 0:
+                if (
+                    self.pdh.PdhGetFormattedCounterValue(
+                        h_write, 0x00000200, None, ctypes.byref(val)
+                    )
+                    == 0
+                ):
                     w_speed = max(0.0, val.doubleValue)
                 speeds[letter] = (r_speed, w_speed)
             return speeds
@@ -90,11 +109,13 @@ def _cpu_via_psutil() -> float | None:
         pass
     return None
 
+
 def _cpu_via_wmi() -> float | None:
     if not _IS_WIN:
         return None
     try:
         import wmi
+
         w = wmi.WMI(namespace=r"root\wmi")
         zones = w.MSAcpi_ThermalZoneTemperature()
         if zones:
@@ -105,11 +126,13 @@ def _cpu_via_wmi() -> float | None:
         pass
     return None
 
+
 def _cpu_via_ohm() -> float | None:
     if not _IS_WIN:
         return None
     try:
         import wmi
+
         w = wmi.WMI(namespace=r"root\OpenHardwareMonitor")
         sensors = w.Sensor()
         for s in sensors:
@@ -119,12 +142,14 @@ def _cpu_via_ohm() -> float | None:
         pass
     return None
 
+
 def _cpu_via_mock() -> float | None:
     try:
         usage = psutil.cpu_percent()
         return round(40.0 + (usage * 0.4), 1)
     except Exception:
         return None
+
 
 def get_cpu_temp() -> float | None:
     for fn in (_cpu_via_psutil, _cpu_via_wmi, _cpu_via_ohm, _cpu_via_mock):
@@ -137,8 +162,15 @@ def get_cpu_temp() -> float | None:
 def _gpu_temp_via_nvidia_smi() -> float | None:
     try:
         r = subprocess.run(
-            ["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, creationflags=0x08000000, timeout=2
+            [
+                "nvidia-smi",
+                "--query-gpu=temperature.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            creationflags=0x08000000,
+            timeout=2,
         )
         if r.returncode == 0:
             val = r.stdout.strip()
@@ -148,9 +180,11 @@ def _gpu_temp_via_nvidia_smi() -> float | None:
         pass
     return None
 
+
 def _gpu_via_gputil() -> float | None:
     try:
         import GPUtil
+
         gpus = GPUtil.getGPUs()
         if gpus:
             t = gpus[0].temperature
@@ -159,11 +193,13 @@ def _gpu_via_gputil() -> float | None:
         pass
     return None
 
+
 def _gpu_via_ohm() -> float | None:
     if not _IS_WIN:
         return None
     try:
         import wmi
+
         w = wmi.WMI(namespace=r"root\OpenHardwareMonitor")
         sensors = w.Sensor()
         for s in sensors:
@@ -172,6 +208,7 @@ def _gpu_via_ohm() -> float | None:
     except Exception:
         pass
     return None
+
 
 def get_gpu_temp() -> float | None:
     for fn in (_gpu_temp_via_nvidia_smi, _gpu_via_gputil, _gpu_via_ohm):
@@ -184,8 +221,15 @@ def get_gpu_temp() -> float | None:
 def _gpu_usage_via_nvidia_smi() -> float | None:
     try:
         r = subprocess.run(
-            ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, creationflags=0x08000000, timeout=2
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            creationflags=0x08000000,
+            timeout=2,
         )
         if r.returncode == 0:
             val = r.stdout.strip()
@@ -195,9 +239,11 @@ def _gpu_usage_via_nvidia_smi() -> float | None:
         pass
     return None
 
+
 def _gpu_usage_via_gputil() -> float | None:
     try:
         import GPUtil
+
         gpus = GPUtil.getGPUs()
         if gpus:
             return round(gpus[0].load * 100, 1)
@@ -205,20 +251,31 @@ def _gpu_usage_via_gputil() -> float | None:
         pass
     return None
 
+
 def _gpu_usage_via_wmi_com() -> float | None:
     if not _IS_WIN:
         return None
     try:
         import wmi
+
         w = wmi.WMI()
-        total = sum(int(x.UtilizationPercentage) for x in w.Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine() if 'engtype_3D' in getattr(x, 'Name', ''))
+        total = sum(
+            int(x.UtilizationPercentage)
+            for x in w.Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine()
+            if "engtype_3D" in getattr(x, "Name", "")
+        )
         return float(min(100, total))
     except Exception:
         pass
     return None
 
+
 def get_gpu_usage() -> float | None:
-    for fn in (_gpu_usage_via_nvidia_smi, _gpu_usage_via_wmi_com, _gpu_usage_via_gputil):
+    for fn in (
+        _gpu_usage_via_nvidia_smi,
+        _gpu_usage_via_wmi_com,
+        _gpu_usage_via_gputil,
+    ):
         result = fn()
         if result is not None:
             return result
@@ -229,6 +286,7 @@ def _build_disk_letter_map() -> dict:
     if not _IS_WIN:
         return {}
     import struct
+
     mapping = {}
     try:
         ctypes.windll.kernel32.CreateFileW.restype = ctypes.c_void_p
@@ -241,8 +299,13 @@ def _build_disk_letter_map() -> dict:
                 continue
             letter = chr(65 + i) + ":"
             h = ctypes.windll.kernel32.CreateFileW(
-                f"\\\\.\\{letter}", 0, FILE_SHARE_RW,
-                None, 3, 0, None  # 3 = OPEN_EXISTING
+                f"\\\\.\\{letter}",
+                0,
+                FILE_SHARE_RW,
+                None,
+                3,
+                0,
+                None,  # 3 = OPEN_EXISTING
             )
             if h is None or h == INVALID_HANDLE:
                 continue
@@ -268,6 +331,7 @@ class HardwareSampler:
         self.cpu_usage: float | None = None
         self.gpu_usage: float | None = None
         self.ram_usage: float | None = None
+        self.hdd_usage: float | None = None
         self.uptime_secs: float = 0.0
         self.disk_speeds: dict = {}
         self._disk_letter_map = _build_disk_letter_map()
@@ -288,7 +352,7 @@ class HardwareSampler:
             self.ram_usage = 0.0
 
         self._stop = threading.Event()
-        
+
         # Start temp thread
         self._temp_thread = threading.Thread(target=self._read_temps_loop, daemon=True)
         self._temp_thread.start()
@@ -313,6 +377,7 @@ class HardwareSampler:
         if _IS_WIN:
             try:
                 import pythoncom
+
                 pythoncom.CoInitialize()
             except Exception:
                 pass
@@ -329,6 +394,7 @@ class HardwareSampler:
         if _IS_WIN:
             try:
                 import pythoncom
+
                 pythoncom.CoUninitialize()
             except Exception:
                 pass
@@ -385,6 +451,7 @@ class HardwareSampler:
         if _IS_WIN:
             try:
                 import pythoncom
+
                 pythoncom.CoInitialize()
             except Exception:
                 pass
@@ -405,9 +472,14 @@ class HardwareSampler:
                 self.gpu_usage = get_gpu_usage()
             except Exception:
                 pass
+            try:
+                self.hdd_usage = psutil.disk_usage("C:\\" if _IS_WIN else "/").percent
+            except Exception:
+                pass
         if _IS_WIN:
             try:
                 import pythoncom
+
                 pythoncom.CoUninitialize()
             except Exception:
                 pass
@@ -419,14 +491,18 @@ class HardwareSampler:
         # Check explorer.exe creation time on Windows to account for sleep/wake/hibernate
         if _IS_WIN:
             try:
-                for p in psutil.process_iter(['name', 'create_time']):
-                    if p.info['name'] and p.info['name'].lower() == 'explorer.exe':
-                        return p.info['create_time']
+                for p in psutil.process_iter(["name", "create_time"]):
+                    if p.info["name"] and p.info["name"].lower() == "explorer.exe":
+                        return p.info["create_time"]
             except Exception:
                 pass
-        
+
         # Fallback to standard boot time
         try:
             return psutil.boot_time()
         except Exception:
             return time.time()
+
+    def reset_uptime(self):
+        self._boot_time = time.time()
+        self.uptime_secs = 0.0

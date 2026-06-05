@@ -3,57 +3,69 @@ simple_view.py
 Flat layout — all styling inline to avoid QSS cascade conflicts.
 Neon teal/magenta palette, 150% font sizes, proper alignment.
 """
+
 # Hello! I just added this comment so you can see the file update live!
 import time
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QSizePolicy
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath
 
 # ── Color palette ──────────────────────────────────────────────────────────────────────────────
-DL      = "#00ffb4"                   # neon teal   — download
-UL      = "#ff3c8c"                   # neon magenta — upload
-DIM     = "rgba(255,255,255,0.90)"
-DIMMER  = "rgba(255,255,255,0.90)"
-BRIGHT  = "rgba(255,255,255,0.95)"
+DL = "#00ffb4"  # neon teal   — download
+UL = "#ff3c8c"  # neon magenta — upload
+DIM = "rgba(255,255,255,0.90)"
+DIMMER = "rgba(255,255,255,0.90)"
+BRIGHT = "rgba(255,255,255,0.95)"
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def fmt_speed(bps: float):
     """Returns (value_str, unit_str)."""
     if bps >= 1_073_741_824:
-        return f"{bps/1_073_741_824:.2f}", "GB/s"
+        return f"{bps / 1_073_741_824:.2f}", "GB/s"
     if bps >= 1_048_576:
-        return f"{bps/1_048_576:.2f}", "MB/s"
+        return f"{bps / 1_048_576:.2f}", "MB/s"
     if bps >= 1_024:
-        return f"{bps/1_024:.1f}", "KB/s"
+        return f"{bps / 1_024:.1f}", "KB/s"
     return f"{int(bps)}", "B/s"
+
 
 def fmt_speed_str(bps: float) -> str:
     v, u = fmt_speed(bps)
     return f"{v} {u}"
 
+
 def fmt_bytes(b: int) -> str:
-    if b >= 1_073_741_824: return f"{b/1_073_741_824:.2f} GB"
-    if b >= 1_048_576:     return f"{b/1_048_576:.2f} MB"
-    if b >= 1_024:         return f"{b/1_024:.1f} KB"
+    if b >= 1_073_741_824:
+        return f"{b / 1_073_741_824:.2f} GB"
+    if b >= 1_048_576:
+        return f"{b / 1_048_576:.2f} MB"
+    if b >= 1_024:
+        return f"{b / 1_024:.1f} KB"
     return f"{b} B"
+
 
 def _lbl(text, style) -> QLabel:
     l = QLabel(text)
     l.setStyleSheet(style)
     return l
 
+
 def _divider() -> QFrame:
     f = QFrame()
     f.setFrameShape(QFrame.HLine)
-    f.setStyleSheet("color: rgba(57, 255, 20, 0.05); border-top: 1px solid rgba(57, 255, 20, 0.05); max-height:1px;")
+    f.setStyleSheet(
+        "color: rgba(57, 255, 20, 0.05); border-top: 1px solid rgba(57, 255, 20, 0.05); max-height:1px;"
+    )
     return f
+
 
 def _v_divider() -> QFrame:
     f = QFrame()
     f.setFrameShape(QFrame.VLine)
-    f.setStyleSheet("color: rgba(57, 255, 20, 0.05); border-left: 1px solid rgba(57, 255, 20, 0.05); max-width:1px;")
+    f.setStyleSheet(
+        "color: rgba(57, 255, 20, 0.05); border-left: 1px solid rgba(57, 255, 20, 0.05); max-width:1px;"
+    )
     return f
 
 
@@ -67,10 +79,7 @@ class _SpeedPanel(QWidget):
         obj = f"SpeedPanel_{arrow.strip()}"
         self.setObjectName(obj)
         self.setStyleSheet(
-            f"QWidget#{obj} {{"
-            f"  background: transparent;"
-            f"  border: none;"
-            f"}}"
+            f"QWidget#{obj} {{  background: transparent;  border: none;}}"
         )
 
         root = QVBoxLayout(self)
@@ -83,15 +92,21 @@ class _SpeedPanel(QWidget):
         vals.setContentsMargins(0, 2, 0, 0)
 
         self._min_val = QLabel("0")
-        self._min_val.setStyleSheet(f"color: {DL}; font-size: 19px; font-weight: normal; opacity: 0.7;")
+        self._min_val.setStyleSheet(
+            f"color: {DL}; font-size: 19px; font-weight: normal; opacity: 0.7;"
+        )
         self._min_val.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # type: ignore
 
         self._val = QLabel("0")
         self._val.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)  # type: ignore
-        self._val.setStyleSheet("color: #fbbf24; font-size: 24px; font-weight: normal; letter-spacing: -0.5px;")
+        self._val.setStyleSheet(
+            "color: #fbbf24; font-size: 24px; font-weight: normal; letter-spacing: -0.5px;"
+        )
 
         self._max_val = QLabel("0")
-        self._max_val.setStyleSheet(f"color: {UL}; font-size: 19px; font-weight: normal; opacity: 0.7;")
+        self._max_val.setStyleSheet(
+            f"color: {UL}; font-size: 19px; font-weight: normal; opacity: 0.7;"
+        )
         self._max_val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # type: ignore
 
         vals.addWidget(self._min_val)
@@ -101,17 +116,16 @@ class _SpeedPanel(QWidget):
         vals.addWidget(self._max_val)
         root.addLayout(vals)
 
-        self._min_bps = float('inf')
+        self._min_bps = float("inf")
         self._max_bps = 0.0
 
     def reset(self):
-        self._min_bps = float('inf')
+        self._min_bps = float("inf")
         self._max_bps = 0.0
         self._history = [0.0] * 30
         self._val.setText("0")
         self._min_val.setText("0")
         self._max_val.setText("0")
-        self._unit.setText("B/s")
         self.update()
 
     def set_speed(self, bps: float):
@@ -121,11 +135,11 @@ class _SpeedPanel(QWidget):
 
         v, u = fmt_speed(bps)
         self._val.setText(v)
-        
+
         # Calculate dynamic min and max over the rolling history window
         min_bps = min(self._history)
         max_bps = max(self._history)
-        
+
         min_v, min_u = fmt_speed(min_bps)
         max_v, max_u = fmt_speed(max_bps)
         self._min_val.setText(f"{min_v}")
@@ -136,70 +150,51 @@ class _SpeedPanel(QWidget):
         super().paintEvent(a0)
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        
+
         w = self.width()
         h = self.height()
-        
+
         max_val = max(self._history)
         min_val = min(self._history)
         val_range = max_val - min_val
         if val_range <= 0.0:
             val_range = 1.0
-            
-        import math
+
         t = time.time()
-        
-        # Subtle flowing animation behind the graph (green for download, magenta for upload)
-        p.setPen(Qt.NoPen)
-        fill_color = QColor(self._color)
-        
-        # Flowing wave path
-        path_bg = QPainterPath()
-        path_bg.moveTo(0, h)
-        for x_coord in range(0, int(w) + 1, 5):
-            y_wave = h - 20 - 5 * math.sin(t * 3.0 + x_coord * 0.06)
-            path_bg.lineTo(x_coord, y_wave)
-        path_bg.lineTo(w, h)
-        path_bg.closeSubpath()
-        
-        pulse = 0.05 + 0.02 * math.sin(t * 2.0)
-        fill_color.setAlphaF(pulse)
-        p.setBrush(fill_color)
-        p.drawPath(path_bg)
-        
+
         # Draw actual sparkline
         path = QPainterPath()
         num_points = len(self._history)
-        
+
         points = []
         for i, val in enumerate(self._history):
             x = (i / (num_points - 1)) * w
             y = (h - 4) - ((val - min_val) / val_range) * (h * 0.65)
             points.append((x, y))
-            
+
         if points:
             path.moveTo(points[0][0], points[0][1])
             for pt in points[1:]:
                 path.lineTo(pt[0], pt[1])
-                
+
             # Draw thin sparkline stroke
             pen_color = QColor(self._color)
-            pen_color.setAlpha(76)
+            pen_color.setAlpha(38)
             p.setPen(QPen(pen_color, 1.5))
             p.setBrush(Qt.NoBrush)
             p.drawPath(path)
-            
+
             # Fill region under the line
             path.lineTo(w, h)
             path.lineTo(0, h)
             path.closeSubpath()
-            
+
             fill_line = QColor(self._color)
-            fill_line.setAlpha(76)
+            fill_line.setAlpha(26)
             p.setPen(Qt.NoPen)
             p.setBrush(fill_line)
             p.drawPath(path)
-            
+
         p.end()
 
 
@@ -225,6 +220,7 @@ class _UsageRow(QWidget):
 
         if has_reset_btn:
             from PyQt5.QtWidgets import QPushButton
+
             self._reset_btn = QPushButton()
             self._reset_btn.setToolTip(f"Reset {label}")
             self._reset_btn.setFixedSize(12, 12)
@@ -251,11 +247,11 @@ class _UsageRow(QWidget):
         # Download: arrow + value (fixed width)
         dl_arrow = QLabel("↓")
         dl_arrow.setStyleSheet(
-            f"color: #60a5fa; font-size: 11px; font-weight: normal; background: transparent;"
+            "color: #60a5fa; font-size: 11px; font-weight: normal; background: transparent;"
         )
         self._dl = QLabel("—")
         self._dl.setStyleSheet(
-            f"color: #60a5fa; font-size: 12px; font-weight: normal; background: transparent;"
+            "color: #60a5fa; font-size: 12px; font-weight: normal; background: transparent;"
         )
         self._dl.setFixedWidth(76)
         self._dl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # type: ignore # pyre-ignore
@@ -263,11 +259,11 @@ class _UsageRow(QWidget):
         # Upload: arrow + value (fixed width)
         ul_arrow = QLabel("↑")
         ul_arrow.setStyleSheet(
-            f"color: #fbbf24; font-size: 11px; font-weight: normal; background: transparent;"
+            "color: #fbbf24; font-size: 11px; font-weight: normal; background: transparent;"
         )
         self._ul = QLabel("—")
         self._ul.setStyleSheet(
-            f"color: #fbbf24; font-size: 12px; font-weight: normal; background: transparent;"
+            "color: #fbbf24; font-size: 12px; font-weight: normal; background: transparent;"
         )
         self._ul.setFixedWidth(76)
         self._ul.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # type: ignore # pyre-ignore
@@ -277,7 +273,6 @@ class _UsageRow(QWidget):
         lay.addSpacing(8)
         lay.addWidget(ul_arrow)
         lay.addWidget(self._ul)
-
 
     def set_values(self, recv: int, sent: int):
         self._dl.setText(fmt_bytes(recv))
@@ -294,10 +289,7 @@ class _TempChip(QWidget):
         obj = f"TempChip_{label}"
         self.setObjectName(obj)
         self.setStyleSheet(
-            f"QWidget#{obj} {{"
-            f"  background: transparent;"
-            f"  border: none;"
-            f"}}"
+            f"QWidget#{obj} {{  background: transparent;  border: none;}}"
         )
 
         root = QVBoxLayout(self)
@@ -310,7 +302,9 @@ class _TempChip(QWidget):
         vals.setContentsMargins(0, 2, 0, 0)
 
         self._min_val = QLabel("—")
-        self._min_val.setStyleSheet(f"color: {DL}; font-size: 21px; font-weight: normal; opacity: 0.7;")
+        self._min_val.setStyleSheet(
+            f"color: {DL}; font-size: 21px; font-weight: normal; opacity: 0.7;"
+        )
         self._min_val.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # type: ignore
 
         self._val = QLabel("—")
@@ -320,7 +314,9 @@ class _TempChip(QWidget):
         )
 
         self._max_val = QLabel("—")
-        self._max_val.setStyleSheet(f"color: {UL}; font-size: 21px; font-weight: normal; opacity: 0.7;")
+        self._max_val.setStyleSheet(
+            f"color: {UL}; font-size: 21px; font-weight: normal; opacity: 0.7;"
+        )
         self._max_val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # type: ignore
 
         vals.addWidget(self._min_val)
@@ -330,12 +326,12 @@ class _TempChip(QWidget):
         vals.addWidget(self._max_val)
         root.addLayout(vals)
 
-        self._min = float('inf')
-        self._max = -float('inf')
+        self._min = float("inf")
+        self._max = -float("inf")
 
     def reset(self):
-        self._min = float('inf')
-        self._max = -float('inf')
+        self._min = float("inf")
+        self._max = -float("inf")
         self._history = [0.0] * 30
         self._val.setText("0")
         self._min_val.setText("0°")
@@ -352,12 +348,12 @@ class _TempChip(QWidget):
             self._val.setText("N/A")
             return
         self._val.setText(f"{celsius:.0f}")
-        
+
         # Calculate dynamic min and max temperature over the rolling history window
         valid_temps = [t for t in self._history if t > 0.0]
         min_t = min(valid_temps) if valid_temps else 0.0
         max_t = max(valid_temps) if valid_temps else 0.0
-        
+
         self._min_val.setText(f"{min_t:.0f}°")
         self._max_val.setText(f"{max_t:.0f}°")
         self.update()
@@ -366,69 +362,51 @@ class _TempChip(QWidget):
         super().paintEvent(a0)
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        
+
         w = self.width()
         h = self.height()
-        
+
         max_val = max(self._history)
         min_val = min(self._history)
         val_range = max_val - min_val
         if val_range <= 0.0:
             val_range = 1.0
-            
-        import math
+
         t = time.time()
-        
-        # Subtle pulsing heatwave behind the graph (amber for CPU, violet for GPU)
-        p.setPen(Qt.NoPen)
-        fill_color = QColor(self._color)
-        
-        path_bg = QPainterPath()
-        path_bg.moveTo(0, h)
-        for x_coord in range(0, int(w) + 1, 5):
-            y_wave = h - 20 - 5 * math.sin(t * 4.5 + x_coord * 0.08)
-            path_bg.lineTo(x_coord, y_wave)
-        path_bg.lineTo(w, h)
-        path_bg.closeSubpath()
-        
-        pulse = 0.04 + 0.02 * math.cos(t * 3.0)
-        fill_color.setAlphaF(pulse)
-        p.setBrush(fill_color)
-        p.drawPath(path_bg)
-        
+
         # Draw actual sparkline
         path = QPainterPath()
         num_points = len(self._history)
-        
+
         points = []
         for i, val in enumerate(self._history):
             x = (i / (num_points - 1)) * w
             y = (h - 4) - ((val - min_val) / val_range) * (h * 0.65)
             points.append((x, y))
-            
+
         if points:
             path.moveTo(points[0][0], points[0][1])
             for pt in points[1:]:
                 path.lineTo(pt[0], pt[1])
-                
+
             # Draw thin sparkline stroke
             pen_color = QColor(self._color)
-            pen_color.setAlpha(76)
+            pen_color.setAlpha(38)
             p.setPen(QPen(pen_color, 1.5))
             p.setBrush(Qt.NoBrush)
             p.drawPath(path)
-            
+
             # Fill region under the line
             path.lineTo(w, h)
             path.lineTo(0, h)
             path.closeSubpath()
-            
+
             fill_line = QColor(self._color)
-            fill_line.setAlpha(76)
+            fill_line.setAlpha(26)
             p.setPen(Qt.NoPen)
             p.setBrush(fill_line)
             p.drawPath(path)
-            
+
         p.end()
 
 
@@ -447,12 +425,12 @@ class SimpleView(QWidget):
         root.setSpacing(0)
 
         root.addWidget(_divider())
-        
+
         # ── Speed panels ──────────────────────────────────────────────
         panels = QHBoxLayout()
         panels.setSpacing(0)
         self._dl_panel = _SpeedPanel("↓", "Download", DL)
-        self._ul_panel = _SpeedPanel("↑", "Upload",   UL)
+        self._ul_panel = _SpeedPanel("↑", "Upload", UL)
         panels.addWidget(self._dl_panel)
         panels.addWidget(_v_divider())
         panels.addWidget(self._ul_panel)
@@ -463,8 +441,8 @@ class SimpleView(QWidget):
         # ── Temperature chips ─────────────────────────────────────────
         chips = QHBoxLayout()
         chips.setSpacing(0)
-        self._cpu_chip = _TempChip("▣", "CPU",  "#fbbf24")  # amber
-        self._gpu_chip = _TempChip("◈", "GPU",  "#a78bfa")  # violet
+        self._cpu_chip = _TempChip("▣", "CPU", "#fbbf24")  # amber
+        self._gpu_chip = _TempChip("◈", "GPU", "#a78bfa")  # violet
         chips.addWidget(self._cpu_chip)
         chips.addWidget(_v_divider())
         chips.addWidget(self._gpu_chip)
@@ -477,7 +455,7 @@ class SimpleView(QWidget):
         self._alltime_row = _UsageRow("All Sessions", has_reset_btn=True)
         self._session_row.reset_triggered.connect(self.reset_session.emit)
         self._alltime_row.reset_triggered.connect(self.reset_all_time.emit)
-        
+
         root.addWidget(self._session_row)
         root.addWidget(_divider())
         root.addWidget(self._alltime_row)
@@ -503,4 +481,3 @@ class SimpleView(QWidget):
         self.reset_temps()
         self._session_row.set_values(0, 0)
         self._alltime_row.set_values(0, 0)
-
