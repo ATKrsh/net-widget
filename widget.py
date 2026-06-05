@@ -92,19 +92,43 @@ class ContentAreaWidget(QWidget):
 
 
 class AnimatedLogo(QWidget):
+    icon_updated = pyqtSignal(QIcon)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(120, 30)
         self._phase = 0.0
+        self._phase_increment = 0.05
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(30)  # ~33 fps
 
+    def set_speed(self, interval_ms: int):
+        if interval_ms <= 0:
+            interval_ms = 1000
+        # Base interval is 1000ms => 0.05 increment
+        self._phase_increment = 0.05 * (1000.0 / interval_ms)
+
     def _tick(self):
-        self._phase += 0.05
+        self._phase += self._phase_increment
         if self._phase > 2 * math.pi:
             self._phase -= 2 * math.pi
         self.update()
+
+        # Render to taskbar icon
+        px = QPixmap(32, 32)
+        px.fill(Qt.transparent)
+        p = QPainter(px)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.translate(5, 16)
+        for i in range(5):
+            h = math.sin(self._phase - i * 0.5) * 8 + 10
+            alpha = int(abs(math.sin(self._phase - i * 0.5)) * 255)
+            p.setPen(Qt.NoPen)  # type: ignore
+            p.setBrush(QColor(0, 255, 180, alpha))
+            p.drawRoundedRect(i * 5, int(-h / 2), 4, int(h), 2, 2)
+        p.end()
+        self.icon_updated.emit(QIcon(px))
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -649,9 +673,9 @@ class TitleBar(QWidget):
         lay.setContentsMargins(14, 0, 8, 0)
         lay.setSpacing(6)
 
-        logo = AnimatedLogo()
-        logo.setObjectName("AppLogo")
-        lay.addWidget(logo)
+        self.logo = AnimatedLogo()
+        self.logo.setObjectName("AppLogo")
+        lay.addWidget(self.logo)
         lay.addSpacing(15)
 
         # 1. Dots widget on the left
@@ -688,7 +712,7 @@ class TitleBar(QWidget):
         min_b = QPushButton("–")
         min_b.setObjectName("WinBtn")
         min_b.setCursor(Qt.PointingHandCursor)  # type: ignore
-        min_b.clicked.connect(self._win.hide)  # type: ignore
+        min_b.clicked.connect(self._win.showMinimized)  # type: ignore
 
         close_b = QPushButton("✕")
         close_b.setObjectName("WinBtn")
@@ -750,7 +774,7 @@ class NetWidget(QMainWindow):
     # ── Window ───────────────────────────────────────────────────────────
 
     def _setup_window(self):
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)  # type: ignore  # type: ignore # pyre-ignore
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowMinimizeButtonHint)  # type: ignore  # type: ignore # pyre-ignore
         self.setAttribute(Qt.WA_TranslucentBackground, True)  # type: ignore  # type: ignore # pyre-ignore
 
         self.setWindowTitle("Net Monitor")
@@ -779,6 +803,9 @@ class NetWidget(QMainWindow):
         self._title_bar = TitleBar(self)
         c_lay.addWidget(self._title_bar)
 
+        # Sync animated logo to window and tray icon
+        self._title_bar.logo.icon_updated.connect(self._on_logo_icon_updated)
+
         # Stack — both views always parented, never destroyed
         self._stack = QStackedWidget()
         self._stack.setStyleSheet("background: transparent;")
@@ -794,6 +821,12 @@ class NetWidget(QMainWindow):
         self._sysinfo_bar.drive_added.connect(self._on_drive_added)
 
         self.setFixedSize(self.SW, self.SH)
+
+    @pyqtSlot(QIcon)
+    def _on_logo_icon_updated(self, icon: QIcon):
+        self.setWindowIcon(icon)
+        if hasattr(self, "_tray") and self._tray is not None:
+            self._tray.setIcon(icon)
 
     def _update_dot(self, name: str, active: bool):
         dot = self._title_bar._dots.get(name)
@@ -929,6 +962,9 @@ class NetWidget(QMainWindow):
         self._opacity_slider.setFixedWidth(70)
         self._opacity_slider.setCursor(Qt.PointingHandCursor)  # type: ignore
         self._opacity_slider.setStyleSheet(
+            "QSlider {"
+            "  background: transparent;"
+            "}"
             "QSlider::groove:horizontal {"
             "  background: rgba(255,255,255,0.08);"
             "  height: 4px;"
@@ -1056,6 +1092,7 @@ class NetWidget(QMainWindow):
         self._monitor.interval = v / 1000.0
         self._hw.interval = v / 1000.0
         self._temp_timer.setInterval(v)
+        self._title_bar.logo.set_speed(v)
 
     def _on_interval_edited(self, text: str):
         try:
@@ -1064,6 +1101,7 @@ class NetWidget(QMainWindow):
                 self._monitor.interval = v / 1000.0
                 self._hw.interval = v / 1000.0
                 self._temp_timer.setInterval(v)
+                self._title_bar.logo.set_speed(v)
         except ValueError:
             pass
 
@@ -1271,7 +1309,7 @@ class NetWidget(QMainWindow):
         self._save()
 
     def _apply_window_flags(self):
-        flags = Qt.FramelessWindowHint | Qt.Tool
+        flags = Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
         if self._always_on_top:
             flags |= Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
@@ -1328,6 +1366,7 @@ class NetWidget(QMainWindow):
         self._monitor.interval = interval / 1000.0
         self._hw.interval = interval / 1000.0
         self._temp_timer.setInterval(interval)
+        self._title_bar.logo.set_speed(interval)
 
     def _save(self):
         s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
