@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  net-widget:
+    build: .
+    container_name: net-widget-app
+    # Host networking allows the app to monitor real host network interfaces (psutil)
+    network_mode: "host"
+    environment:
+      - DISPLAY=:0
+      - WAYLAND_DISPLAY=wayland-0
+      - XDG_RUNTIME_DIR=/mnt/wslg/runtime-dir
+      - PULSE_SERVER=/mnt/wslg/PulseServer
+      - LIBGL_ALWAYS_INDIRECT=1
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /run/desktop/mnt/host/wslg/.X11-unix:/tmp/.X11-unix:ro
+      - /run/desktop/mnt/host/wslg:/mnt/wslg:ro
+    # Allow accessing the host X11 display server
+    ipc: host
+
