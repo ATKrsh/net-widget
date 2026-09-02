@@ -30,6 +30,7 @@ from network_monitor import NetworkMonitor
 from data_store import DataStore
 from simple_view import SimpleView
 from advanced_view import AdvancedView
+from sysinfo_view import SysInfoView
 from hardware_monitor import HardwareSampler
 
 
@@ -58,6 +59,7 @@ def _tray_icon() -> QPixmap:
 BUTTON_COLORS = {
     "Simple": ("0, 255, 180", "#00ffb4"),
     "Advanced": ("167, 139, 250", "#a78bfa"),
+    "SysInfo": ("56, 189, 248", "#38bdf8"),
     "MO": ("6, 182, 212", "#06b6d4"),
     "IO": ("217, 70, 239", "#d946ef"),
     "Win": ("59, 130, 246", "#3b82f6"),
@@ -561,12 +563,25 @@ class _SysInfoBar(QWidget):
         hdd: float | None,
         uptime: float,
         disk_speeds: dict,
+        top_cpu_name: str = "System",
+        top_cpu_pct: float = 0.0,
+        top_gpu_name: str = "Idle",
+        top_gpu_pct: float = 0.0,
+        top_ram_name: str = "System",
+        top_ram_pct: float = 0.0,
     ):
         self._cpu_val.setText(f"{cpu:.0f}%" if cpu is not None else "N/A")
         self._gpu_val.setText(f"{gpu:.0f}%" if gpu is not None else "N/A")
         self._ram_val.setText(f"{ram:.0f}%" if ram is not None else "N/A")
         self._hdd_val.setText(f"{hdd:.0f}%" if hdd is not None else "N/A")
         self._up_val.setText(self._fmt_uptime(uptime))
+
+        if cpu is not None:
+            self._cpu_val.setToolTip(f"CPU Load: {cpu:.1f}%\nTop CPU: {top_cpu_name} ({top_cpu_pct:.1f}%)")
+        if gpu is not None:
+            self._gpu_val.setToolTip(f"GPU Load: {gpu:.1f}%\nTop GPU: {top_gpu_name} ({top_gpu_pct:.1f}%)")
+        if ram is not None:
+            self._ram_val.setToolTip(f"RAM Usage: {ram:.1f}%\nTop RAM: {top_ram_name} ({top_ram_pct:.1f}%)")
 
         for name, (rbps, wbps) in disk_speeds.items():
             _, _name_lbl, read_lbl, write_lbl, dot, read_arrow, write_arrow = (
@@ -697,18 +712,36 @@ class TitleBar(QWidget):
             d_lay.addWidget(l)
 
         lay.addWidget(self._dots_widget)
+        lay.addSpacing(10)
 
-        # 2. Stretch to push rotating text and window controls to the right
+        # 2. Navigation Tabs (Simple | Advanced | SysInfo)
+        self._tabs_widget = QWidget()
+        self._tabs_widget.setStyleSheet("background: transparent;")
+        t_lay = QHBoxLayout(self._tabs_widget)
+        t_lay.setContentsMargins(0, 0, 0, 0)
+        t_lay.setSpacing(4)
+
+        self._tab_btns = {}
+        for mode_key, label in [("simple", "⚡ Simple"), ("advanced", "📈 Advanced"), ("sysinfo", "ℹ️ SysInfo")]:
+            btn = QPushButton(label)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _, m=mode_key: self._win.set_mode(m))
+            t_lay.addWidget(btn)
+            self._tab_btns[mode_key] = btn
+
+        lay.addWidget(self._tabs_widget)
+
+        # 3. Stretch to push rotating text and window controls to the right
         lay.addStretch()
 
-        # 3. Rotating "ATK" logo on the right
+        # 4. Rotating "ATK" logo on the right
         title = Rotating3DText("ATK")
         title.setObjectName("AppTitle")
         lay.addWidget(title)
 
         lay.addSpacing(10)
 
-        # 4. Window controls
+        # 5. Window controls
         min_b = QPushButton("–")
         min_b.setObjectName("WinBtn")
         min_b.setCursor(Qt.PointingHandCursor)  # type: ignore
@@ -722,6 +755,45 @@ class TitleBar(QWidget):
 
         lay.addWidget(min_b)
         lay.addWidget(close_b)
+
+        self.update_active_tab("simple")
+
+    def update_active_tab(self, mode: str):
+        colors = {
+            "simple": "#00ffb4",
+            "advanced": "#a78bfa",
+            "sysinfo": "#38bdf8",
+        }
+        for k, btn in self._tab_btns.items():
+            if k == mode:
+                col = colors.get(k, "#00ffb4")
+                btn.setStyleSheet(
+                    "QPushButton {"
+                    "  background: rgba(255, 255, 255, 0.08);"
+                    f"  color: {col};"
+                    f"  border: 1px solid {col};"
+                    "  border-radius: 4px;"
+                    "  padding: 3px 8px;"
+                    "  font-size: 11px;"
+                    "  font-weight: bold;"
+                    "}"
+                )
+            else:
+                btn.setStyleSheet(
+                    "QPushButton {"
+                    "  background: rgba(255, 255, 255, 0.02);"
+                    "  color: rgba(255, 255, 255, 0.50);"
+                    "  border: 1px solid rgba(255, 255, 255, 0.06);"
+                    "  border-radius: 4px;"
+                    "  padding: 3px 8px;"
+                    "  font-size: 11px;"
+                    "  font-weight: normal;"
+                    "}"
+                    "QPushButton:hover {"
+                    "  color: #ffffff;"
+                    "  background: rgba(255, 255, 255, 0.06);"
+                    "}"
+                )
 
     def mousePressEvent(self, a0):
         if a0.button() == Qt.LeftButton and not self._win.position_locked:  # type: ignore  # type: ignore # pyre-ignore
@@ -743,6 +815,7 @@ class TitleBar(QWidget):
 class NetWidget(QMainWindow):
     SW, SH = 520, 415  # Simple   size
     AW, AH = 460, 769  # Advanced size
+    MW, MH = 550, 560  # System Info (msinfo32) size
 
     def __init__(self):
         super().__init__()
@@ -758,10 +831,10 @@ class NetWidget(QMainWindow):
         self._build_ui()
         self._setup_tray()
 
-        # ── Hardware temp sampler (display: 0.1 s, sensor read: 1 s) ─
-        self._hw = HardwareSampler(interval=1.0)  # sensor read stays at 1 s
+        # ── Hardware temp sampler (50ms responsive sampling) ─────────
+        self._hw = HardwareSampler(interval=0.05)
         self._temp_timer = QTimer(self)
-        self._temp_timer.setInterval(100)  # push cached value every 0.1 s
+        self._temp_timer.setInterval(50)  # push cached value every 50 ms
         self._temp_timer.timeout.connect(self._on_temp_tick)
         self._temp_timer.start()
 
@@ -806,13 +879,15 @@ class NetWidget(QMainWindow):
         # Sync animated logo to window and tray icon
         self._title_bar.logo.icon_updated.connect(self._on_logo_icon_updated)
 
-        # Stack — both views always parented, never destroyed
+        # Stack — all views always parented, never destroyed
         self._stack = QStackedWidget()
         self._stack.setStyleSheet("background: transparent;")
         self._simple_view = SimpleView()
         self._advanced_view = AdvancedView()
-        self._stack.addWidget(self._simple_view)  # 0
-        self._stack.addWidget(self._advanced_view)  # 1
+        self._sysinfo_view = SysInfoView()
+        self._stack.addWidget(self._simple_view)   # 0
+        self._stack.addWidget(self._advanced_view) # 1
+        self._stack.addWidget(self._sysinfo_view)  # 2
         self._stack.setCurrentIndex(0)
         c_lay.addWidget(self._stack)
 
@@ -840,7 +915,7 @@ class NetWidget(QMainWindow):
                 )
 
     def _on_drive_added(self):
-        """Grow the simple-mode window height to accommodate a new drive row."""
+        """Grow the window height to accommodate a new drive row in both simple and advanced modes."""
         n_drives = len(self._sysinfo_bar._drive_rows)
         n_rows = math.ceil(n_drives / 2)
         extra = 0
@@ -848,8 +923,9 @@ class NetWidget(QMainWindow):
             extra = 28 + (n_rows - 1) * 22
 
         self.SH = 415 + extra
-        if self._mode == "simple":
-            self.setFixedSize(self.SW, self.SH)
+        self.AH = 769 + extra
+        self._apply_size(self._mode)
+
 
     def _build_bottom_bar(self) -> QWidget:
         container = QWidget()
@@ -1030,6 +1106,7 @@ class NetWidget(QMainWindow):
     def _update_mode_btns(self, mode: str):
         self._update_dot("Simple", mode == "simple")
         self._update_dot("Advanced", mode == "advanced")
+        self._update_dot("SysInfo", mode == "sysinfo")
 
     # ── Tray ─────────────────────────────────────────────────────────────
 
@@ -1041,10 +1118,11 @@ class NetWidget(QMainWindow):
         for txt, fn in [
             ("Show", self.show_widget),
             (None, None),
-            ("Simple mode", lambda: self.set_mode("simple")),
-            ("Advanced mode", lambda: self.set_mode("advanced")),
+            ("⚡ Simple View", lambda: self.set_mode("simple")),
+            ("📈 Advanced View", lambda: self.set_mode("advanced")),
+            ("ℹ️ System Info (msinfo32)", lambda: self.set_mode("sysinfo")),
             (None, None),
-            ("Exit", self.close_app),
+            ("✕ Exit", self.close_app),
         ]:
             if txt is None:
                 m.addSeparator()
@@ -1065,12 +1143,25 @@ class NetWidget(QMainWindow):
             return
         self._mode = mode
         self._update_mode_btns(mode)
-        self._stack.setCurrentIndex(0 if mode == "simple" else 1)
+        if mode == "simple":
+            idx = 0
+        elif mode == "advanced":
+            idx = 1
+        else:
+            idx = 2
+        self._stack.setCurrentIndex(idx)
         self._apply_size(mode)
+        if hasattr(self, "_title_bar"):
+            self._title_bar.update_active_tab(mode)
         self._save()
 
     def _apply_size(self, mode: str):
-        w, h = (self.SW, self.SH) if mode == "simple" else (self.AW, self.AH)
+        if mode == "simple":
+            w, h = self.SW, self.SH
+        elif mode == "advanced":
+            w, h = self.AW, self.AH
+        else:
+            w, h = self.MW, self.MH
         self.setFixedSize(w, h)
 
     # ── Opacity ──────────────────────────────────────────────
@@ -1323,8 +1414,26 @@ class NetWidget(QMainWindow):
 
     def _on_temp_tick(self):
         cpu = self._hw.cpu_temp
-        gpu = self._hw.gpu_temp
-        self._simple_view.update_temps(cpu, gpu)
+        dgpu = getattr(self._hw, "dgpu_temp", self._hw.gpu_temp)
+        igpu = getattr(self._hw, "igpu_temp", None)
+        top_c_name = getattr(self._hw, "top_cpu_proc", "System")
+        top_c_pct = getattr(self._hw, "top_cpu_pct", 0.0)
+        top_g_name = getattr(self._hw, "top_gpu_proc", "Idle")
+        top_g_pct = getattr(self._hw, "top_gpu_pct", 0.0)
+        top_r_name = getattr(self._hw, "top_ram_proc", "System")
+        top_r_pct = getattr(self._hw, "top_ram_pct", 0.0)
+        dgpu_n = getattr(self._hw, "dgpu_name", "NVIDIA GeForce RTX 3050")
+        igpu_n = getattr(self._hw, "igpu_name", "AMD Radeon(TM) Graphics")
+
+        self._simple_view.update_temps(
+            cpu, dgpu, igpu,
+            top_cpu_name=top_c_name,
+            top_cpu_pct=top_c_pct,
+            top_gpu_name=top_g_name,
+            top_gpu_pct=top_g_pct,
+            dgpu_name=dgpu_n,
+            igpu_name=igpu_n,
+        )
         self._sysinfo_bar.update_sysinfo(
             self._hw.cpu_usage,
             self._hw.gpu_usage,
@@ -1332,6 +1441,12 @@ class NetWidget(QMainWindow):
             self._hw.hdd_usage,
             self._hw.uptime_secs,
             self._hw.disk_speeds,
+            top_cpu_name=top_c_name,
+            top_cpu_pct=top_c_pct,
+            top_gpu_name=top_g_name,
+            top_gpu_pct=top_g_pct,
+            top_ram_name=top_r_name,
+            top_ram_pct=top_r_pct,
         )
 
     # ── Persistence ───────────────────────────────────────────────────────
@@ -1400,12 +1515,22 @@ class NetWidget(QMainWindow):
     def contextMenuEvent(self, event):
         m = QMenu(self)
         m.setStyleSheet(self.styleSheet())
-        other = "advanced" if self._mode == "simple" else "simple"
-        a = QAction(f"Switch to {other.capitalize()}", self)
-        a.triggered.connect(lambda: self.set_mode(other))
-        q = QAction("Exit", self)
+        
+        a_sim = QAction("⚡ Switch to Simple View", self)
+        a_sim.triggered.connect(lambda: self.set_mode("simple"))
+        
+        a_adv = QAction("📈 Switch to Advanced View", self)
+        a_adv.triggered.connect(lambda: self.set_mode("advanced"))
+        
+        a_sys = QAction("ℹ️ Switch to System Info (msinfo32)", self)
+        a_sys.triggered.connect(lambda: self.set_mode("sysinfo"))
+        
+        q = QAction("✕ Exit", self)
         q.triggered.connect(self.close_app)
-        m.addAction(a)
+        
+        m.addAction(a_sim)
+        m.addAction(a_adv)
+        m.addAction(a_sys)
         m.addSeparator()
         m.addAction(q)
         m.exec_(event.globalPos())
