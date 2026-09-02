@@ -441,11 +441,14 @@ class SimpleView(QWidget):
         # ── Temperature chips ─────────────────────────────────────────
         chips = QHBoxLayout()
         chips.setSpacing(0)
-        self._cpu_chip = _TempChip("▣", "CPU", "#fbbf24")  # amber
-        self._gpu_chip = _TempChip("◈", "GPU", "#a78bfa")  # violet
+        self._cpu_chip = _TempChip("▣", "CPU", "#38bdf8")  # sky blue
+        self._dgpu_chip = _TempChip("◈", "dGPU", "#a78bfa")  # violet (NVIDIA RTX)
+        self._igpu_chip = _TempChip("◈", "iGPU", "#34d399")  # emerald (AMD Radeon)
         chips.addWidget(self._cpu_chip)
         chips.addWidget(_v_divider())
-        chips.addWidget(self._gpu_chip)
+        chips.addWidget(self._dgpu_chip)
+        chips.addWidget(_v_divider())
+        chips.addWidget(self._igpu_chip)
         root.addLayout(chips)
 
         root.addWidget(_divider())
@@ -467,13 +470,33 @@ class SimpleView(QWidget):
         self._session_row.set_values(stats["session_recv"], stats["session_sent"])
         self._alltime_row.set_values(all_time_recv, all_time_sent)
 
-    def update_temps(self, cpu: float | None, gpu: float | None):
+    def update_temps(
+        self,
+        cpu: float | None,
+        dgpu: float | None,
+        igpu: float | None = None,
+        top_cpu_name: str = "System",
+        top_cpu_pct: float = 0.0,
+        top_gpu_name: str = "Idle",
+        top_gpu_pct: float = 0.0,
+        dgpu_name: str = "NVIDIA GeForce RTX 3050",
+        igpu_name: str = "AMD Radeon(TM) Graphics",
+    ):
         self._cpu_chip.set_temp(cpu)
-        self._gpu_chip.set_temp(gpu)
+        self._dgpu_chip.set_temp(dgpu)
+        self._igpu_chip.set_temp(igpu)
+
+        if cpu is not None:
+            self._cpu_chip.setToolTip(f"CPU Temp: {cpu:.1f}°C\nTop CPU: {top_cpu_name} ({top_cpu_pct:.1f}%)")
+        if dgpu is not None:
+            self._dgpu_chip.setToolTip(f"dGPU ({dgpu_name}): {dgpu:.1f}°C\nTop GPU: {top_gpu_name} ({top_gpu_pct:.1f}%)")
+        if igpu is not None:
+            self._igpu_chip.setToolTip(f"iGPU ({igpu_name}): {igpu:.1f}°C\nTop GPU: {top_gpu_name} ({top_gpu_pct:.1f}%)")
 
     def reset_temps(self):
         self._cpu_chip.reset()
-        self._gpu_chip.reset()
+        self._dgpu_chip.reset()
+        self._igpu_chip.reset()
 
     def reset_all(self):
         self._dl_panel.reset()
