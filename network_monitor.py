@@ -93,7 +93,15 @@ class NetworkMonitor(QThread):
 
     @property
     def interface_name(self):
-        return self._interface or "All Interfaces"
+        name = self._interface or "All Interfaces"
+        # Map eth/wlan to Ethernet/Wi-Fi in Docker Desktop on Windows for visual consistency
+        import os
+        if os.path.exists('/.dockerenv') and os.path.exists('/run/desktop/mnt/host/wslg'):
+            if name.lower().startswith("eth"):
+                return "Ethernet"
+            elif name.lower().startswith("wlan"):
+                return "Wi-Fi"
+        return name
 
     def run(self):
         self._running = True
