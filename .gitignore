@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.venv312/
+
+# Build/Packaging
+build/
+dist/
+*.spec
+
+# Editor
+.vscode/
+
+# Misc
+*.log

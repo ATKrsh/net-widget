@@ -1,0 +1,46 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build macOS App bundle
+      run: |
+        pyinstaller --noconfirm --onedir --windowed --name "NetMonitor" \
+            --add-data "style.qss:." \
+            main.py
+
+    - name: Zip the .app bundle
+      run: |
+        cd dist
+        # Zipping preserves the strict macOS file permissions required to launch .app bundles
+        zip -r NetMonitor-macOS.zip NetMonitor.app
+
+    - name: Upload App Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: NetMonitor-macOS
+        path: dist/NetMonitor-macOS.zip
+        retention-days: 7
